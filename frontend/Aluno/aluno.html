@@ -3,61 +3,390 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VibeDance - Área do Aluno</title>
+    <title>VibeDance - Espaço do Aluno</title>
+
+    <!-- Importando Design System e Fontes -->
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/components.css">
+
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        
-        /* Estilos do Grid de Modalidades */
-        .grid { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px; }
-        .card { border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; width: calc(33.333% - 20px); text-align: center; background: #fff; box-sizing: border-box; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .card h3 { color: #333; margin-top: 0; }
-        .card p { color: #666; font-size: 14px; min-height: 40px; }
-        
-        /* Botões */
-        button { background-color: #4CAF50; color: white; padding: 10px 15px; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
-        button:hover { background-color: #45a049; }
-        .btn-matricular { background-color: #2196F3; }
-        .btn-matricular:hover { background-color: #1976D2; }
-        .btn-esgotado { background-color: #9e9e9e; cursor: not-allowed; }
-        
-        /* Seção de Turmas Oculta por Padrão */
-        .turmas-section { margin-top: 40px; display: none; border-top: 2px solid #eee; padding-top: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background-color: #f2f2f2; color: #333; }
+        /* Estilos dedicados ao Painel do Aluno */
+        .progress-ring-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: var(--radius-full);
+            background: var(--grad-primary);
+            box-shadow: 0 0 10px var(--neon-purple);
+            transition: width 1s ease-in-out;
+        }
+
+        /* Abas de Navegação Superior */
+        .nav-tabs-wrapper {
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 16px;
+            margin-bottom: 28px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            background: var(--grad-primary);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.35);
+        }
+
+        .tab-content-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards de Aula */
+        .class-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            position: relative;
+            transition: all var(--transition-spring);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .class-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--border-glow);
+            box-shadow: var(--glow-purple);
+        }
+
+        .class-time-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--neon-purple);
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        /* Player Card de Playlist */
+        .playlist-card {
+            background: var(--grad-dark-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all var(--transition-normal);
+        }
+
+        .playlist-card:hover {
+            border-color: var(--neon-cyan);
+            box-shadow: var(--glow-cyan);
+            transform: translateY(-4px);
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Bem-vindo ao VibeDance!</h1>
-    <p>Explore nossas modalidades e encontre a turma perfeita para você.</p>
+    <div class="app-container">
+        <div class="bg-glow-orb bg-orb-1"></div>
+        <div class="bg-glow-orb bg-orb-2"></div>
 
-    <!-- VITRINE DE MODALIDADES -->
-    <div class="grid" id="modalidades-grid">
-        <p>Carregando modalidades...</p>
+        <!-- BARRA LATERAL (SIDEBAR) -->
+        <aside class="vibe-sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon-box">
+                    <i class="fas fa-compact-disc"></i>
+                </div>
+                <div class="brand-text">
+                    <h2>VibeDance</h2>
+                    <span>Portal do Aluno</span>
+                </div>
+            </div>
+
+            <div class="menu-category-label">Menu Principal</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a class="nav-link active" onclick="trocarAba('minhas-aulas', this)">
+                        <i class="fas fa-calendar-alt"></i> Minhas Aulas
+                    </a>
+                </li>
+                <li>
+                    <a class="nav-link" onclick="trocarAba('materiais', this)">
+                        <i class="fas fa-headphones"></i> Playlists & Vídeos
+                    </a>
+                </li>
+                <li>
+                    <a class="nav-link" onclick="trocarAba('frequencia', this)">
+                        <i class="fas fa-chart-pie"></i> Meu Histórico
+                    </a>
+                </li>
+                <li>
+                    <a class="nav-link" onclick="trocarAba('explorar', this)">
+                        <i class="fas fa-compass"></i> Explorar Turmas
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-user-card">
+                <div class="user-mini-profile">
+                    <div class="user-avatar-circle current-user-avatar">AL</div>
+                    <div class="user-meta">
+                        <div class="name current-user-name">Aluno Vibe</div>
+                        <div class="role">Aluno Ativo</div>
+                    </div>
+                </div>
+                <button class="btn-logout" title="Sair da Conta">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="vibe-main-content">
+            
+            <!-- TOPO DE BOAS-VINDAS -->
+            <header class="top-header">
+                <div class="welcome-box">
+                    <h1>
+                        <span id="saudacao-texto">Bem-vindo(a)</span>, <span class="current-user-name" style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Aluno</span>! 💃
+                    </h1>
+                    <p>Aqui está o seu ritmo semanal e os materiais para praticar.</p>
+                </div>
+
+                <div class="header-actions">
+                    <div class="studio-status-pill">
+                        <span class="live-dot"></span> Estúdio Aberto Hoje
+                    </div>
+                </div>
+            </header>
+
+            <!-- STATS RÁPIDOS DO ALUNO -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Frequência Geral</span>
+                        <div class="stat-icon-wrapper stat-icon-purple">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">92%</div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: 92%;"></div>
+                    </div>
+                    <div class="stat-footer">
+                        <span class="trend-up"><i class="fas fa-arrow-up"></i> +4%</span> este mês
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Aulas Concluídas</span>
+                        <div class="stat-icon-wrapper stat-icon-pink">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-total-aulas">14</div>
+                    <div class="stat-footer">
+                        <span class="trend-neutral">Meta mensal: 16 aulas</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Turmas Ativas</span>
+                        <div class="stat-icon-wrapper stat-icon-cyan">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-turmas-matriculadas">2</div>
+                    <div class="stat-footer">
+                        <span style="color: var(--neon-cyan);">Hip Hop & Jazz Funk</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Próxima Coreografia</span>
+                        <div class="stat-icon-wrapper stat-icon-amber">
+                            <i class="fas fa-music"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" style="font-size: 1.3rem; margin-top: 5px;">Quarta, 19h</div>
+                    <div class="stat-footer">
+                        <span>Studio Beat B • Prof. Diego</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABAS DE NAVEGAÇÃO INTERNA -->
+            <div class="nav-tabs-wrapper">
+                <button class="tab-btn active" onclick="trocarAba('minhas-aulas', this)">
+                    <i class="fas fa-calendar-check"></i> Minhas Próximas Aulas
+                </button>
+                <button class="tab-btn" onclick="trocarAba('materiais', this)">
+                    <i class="fas fa-music"></i> Playlists & Vídeos
+                </button>
+                <button class="tab-btn" onclick="trocarAba('frequencia', this)">
+                    <i class="fas fa-history"></i> Histórico de Frequência
+                </button>
+                <button class="tab-btn" onclick="trocarAba('explorar', this)">
+                    <i class="fas fa-plus-circle"></i> Explorar Novas Modalidades
+                </button>
+            </div>
+
+            <!-- ABA 1: MINHAS AULAS -->
+            <div id="tab-minhas-aulas" class="tab-content-panel active">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-clock" style="color: var(--neon-purple);"></i> Agenda das Suas Turmas
+                    </h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Apresente-se com 10 min de antecedência</span>
+                </div>
+
+                <div class="cards-grid" id="container-minhas-turmas">
+                    <!-- Preenchido via JavaScript com turmas reais do aluno -->
+                </div>
+            </div>
+
+            <!-- ABA 2: MATERIAIS DE APOIO (PLAYLISTS E VÍDEOS) -->
+            <div id="tab-materiais" class="tab-content-panel">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-headphones" style="color: var(--neon-pink);"></i> Playlists & Coreografias dos Professores
+                    </h2>
+                </div>
+
+                <div class="cards-grid" id="container-materiais-aluno">
+                    <!-- Preenchido dinamicamente via JS -->
+                </div>
+            </div>
+
+            <!-- ABA 3: HISTÓRICO DE FREQUÊNCIA -->
+            <div id="tab-frequencia" class="tab-content-panel">
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div>
+                            <h3 style="font-size: 1.15rem; color: #fff;">Registro de Frequência Recente</h3>
+                            <p style="font-size: 0.82rem; color: var(--text-muted);">Presenças confirmadas pelo professor na chamada virtual</p>
+                        </div>
+                        <span class="badge badge-green"><i class="fas fa-check"></i> Frequência Regular</span>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="vibe-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Turma</th>
+                                    <th>Professor</th>
+                                    <th>Horário</th>
+                                    <th>Status de Presença</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-presencas">
+                                <!-- Inserido via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA 4: EXPLORAR TURMAS -->
+            <div id="tab-explorar" class="tab-content-panel">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-sparkles" style="color: var(--neon-cyan);"></i> Todas as Turmas Abertas
+                    </h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Clique para matricular-se imediatamente</span>
+                </div>
+
+                <div class="cards-grid" id="container-todas-turmas">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+
+        </main>
     </div>
 
-    <!-- LISTA DE TURMAS (Aparece ao clicar em uma modalidade) -->
-    <div class="turmas-section" id="turmas-section">
-        <h2 id="titulo-turmas">Turmas Disponíveis</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Dias da Semana</th>
-                    <th>Horário</th>
-                    <th>Vagas Disponíveis</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-            <tbody id="tabela-turmas">
-                <!-- As linhas serão inseridas aqui via JavaScript -->
-            </tbody>
-        </table>
+    <!-- MODAL DE DETALHES DE VÍDEO/PLAYLIST -->
+    <div id="modal-player" class="modal-backdrop">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modal-player-titulo">Coreografia em Foco</h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-player')">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div class="soundwave-visualizer" style="height: 48px; margin-bottom: 20px;">
+                    <div class="soundwave-bar" style="height: 35px;"></div>
+                    <div class="soundwave-bar" style="height: 45px;"></div>
+                    <div class="soundwave-bar" style="height: 25px;"></div>
+                    <div class="soundwave-bar" style="height: 40px;"></div>
+                    <div class="soundwave-bar" style="height: 30px;"></div>
+                </div>
+                <h4 id="modal-player-sub" style="color: #fff; margin-bottom: 10px;">Ensaio e Contagem dos 8 Tempos</h4>
+                <p id="modal-player-desc" style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 24px;"></p>
+                <div style="display: flex; gap: 12px; justify-content: center;">
+                    <a id="modal-player-link" href="#" target="_blank" class="btn-vibe-primary">
+                        <i class="fas fa-external-link-alt"></i> Abrir Link Completo
+                    </a>
+                    <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-player')">Fechar</button>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 
-<script src="aluno.js"></script>
+    <!-- Scripts -->
+    <script src="../js/state.js"></script>
+    <script src="../js/ui.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="aluno.js"></script>
 </body>
 </html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeDance - Painel do Professor</title>
+
+    <!-- Design System e Fontes -->
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/components.css">
+
+    <style>
+        .nav-tabs-wrapper {
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 16px;
+            margin-bottom: 28px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all var(--transition-fast);
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover, .tab-btn.active {
+            background: var(--grad-primary);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.35);
+        }
+
+        .tab-content-panel {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Chamada Virtual Rápida */
+        .chamada-header-card {
+            background: var(--grad-dark-card);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .attendance-stat-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .attendance-percentage {
+            font-family: var(--font-heading);
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--neon-emerald);
+            line-height: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="bg-glow-orb bg-orb-1"></div>
+        <div class="bg-glow-orb bg-orb-2"></div>
+
+        <!-- BARRA LATERAL (SIDEBAR) -->
+        <aside class="vibe-sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon-box">
+                    <i class="fas fa-compact-disc"></i>
+                </div>
+                <div class="brand-text">
+                    <h2>VibeDance</h2>
+                    <span>Gestão Docente</span>
+                </div>
+            </div>
+
+            <div class="menu-category-label">Turmas & Gestão</div>
+            <ul class="sidebar-menu">
+                <li>
+                    <a class="nav-link active" onclick="trocarAbaDocente('agenda', this)">
+                        <i class="fas fa-calendar-alt"></i> Agenda Semanal
+                    </a>
+                </li>
+                <li>
+                    <a class="nav-link" onclick="trocarAbaDocente('chamada', this)">
+                        <i class="fas fa-user-check"></i> Chamada Virtual
+                    </a>
+                </li>
+                <li>
+                    <a class="nav-link" onclick="trocarAbaDocente('comunicados', this)">
+                        <i class="fas fa-bullhorn"></i> Mural & Playlists
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-user-card">
+                <div class="user-mini-profile">
+                    <div class="user-avatar-circle current-user-avatar" style="background: var(--grad-cyan);">PR</div>
+                    <div class="user-meta">
+                        <div class="name current-user-name">Professor(a)</div>
+                        <div class="role" style="color: var(--neon-pink);">Corpo Docente</div>
+                    </div>
+                </div>
+                <button class="btn-logout" title="Sair da Conta">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTEÚDO PRINCIPAL -->
+        <main class="vibe-main-content">
+            
+            <header class="top-header">
+                <div class="welcome-box">
+                    <h1>
+                        <span id="saudacao-docente">Olá</span>, <span class="current-user-name" style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Professor</span>! 🕺✨
+                    </h1>
+                    <p>Controle suas turmas, registre a lista de presença e envie materiais para os alunos.</p>
+                </div>
+
+                <div class="header-actions">
+                    <button class="btn-vibe-primary" onclick="trocarAbaDocente('chamada', null)">
+                        <i class="fas fa-user-check"></i> Fazer Chamada Agora
+                    </button>
+                </div>
+            </header>
+
+            <!-- STATS DO PROFESSOR -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Minhas Turmas</span>
+                        <div class="stat-icon-wrapper stat-icon-purple">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-prof-turmas">2</div>
+                    <div class="stat-footer">
+                        <span>Horários regulares ativos</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Alunos Matriculados</span>
+                        <div class="stat-icon-wrapper stat-icon-pink">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" id="stat-prof-alunos">44</div>
+                    <div class="stat-footer">
+                        <span class="trend-up"><i class="fas fa-arrow-up"></i> +5</span> novos alunos
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Presença Média</span>
+                        <div class="stat-icon-wrapper stat-icon-cyan">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value">94.8%</div>
+                    <div class="stat-footer">
+                        <span class="trend-up">Alta assiduidade</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-title">Próxima Aula</span>
+                        <div class="stat-icon-wrapper stat-icon-amber">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                    <div class="stat-value" style="font-size: 1.25rem; margin-top: 5px;" id="stat-prof-proxima">19:00</div>
+                    <div class="stat-footer">
+                        <span>Studio Beat B • Urban</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ABAS DE NAVEGAÇÃO -->
+            <div class="nav-tabs-wrapper">
+                <button class="tab-btn active" onclick="trocarAbaDocente('agenda', this)">
+                    <i class="fas fa-calendar-alt"></i> 1. Agenda Semanal Interativa
+                </button>
+                <button class="tab-btn" onclick="trocarAbaDocente('chamada', this)">
+                    <i class="fas fa-clipboard-check"></i> 2. Chamada Virtual Rápida
+                </button>
+                <button class="tab-btn" onclick="trocarAbaDocente('comunicados', this)">
+                    <i class="fas fa-bullhorn"></i> 3. Mural & Envio de Músicas/Vídeos
+                </button>
+            </div>
+
+            <!-- ABA 1: AGENDA SEMANAL INTERATIVA -->
+            <div id="tab-agenda" class="tab-content-panel active">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-calendar-check" style="color: var(--neon-purple);"></i> Minhas Turmas Sob Responsabilidade
+                    </h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Clique em "Iniciar Chamada" para abrir a lista da turma</span>
+                </div>
+
+                <div class="cards-grid" id="container-agenda-professor">
+                    <!-- Gerado dinamicamente via professor.js -->
+                </div>
+            </div>
+
+            <!-- ABA 2: CHAMADA VIRTUAL (ROLL CALL) -->
+            <div id="tab-chamada" class="tab-content-panel">
+                <div class="chamada-header-card">
+                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                        <div>
+                            <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Turma Selecionada:</label>
+                            <select id="select-turma-chamada" class="vibe-select" style="min-width: 250px;" onchange="carregarListaChamada()">
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Data da Aula:</label>
+                            <input type="date" id="input-data-chamada" class="vibe-input" style="height: 44px;" onchange="carregarListaChamada()">
+                        </div>
+                    </div>
+
+                    <div class="attendance-stat-box">
+                        <div>
+                            <div style="font-size: 0.82rem; color: var(--text-muted);">Taxa de Presença Hoje:</div>
+                            <div class="attendance-percentage" id="taxa-presenca-rotulo">100%</div>
+                        </div>
+                        <button class="btn-vibe-secondary" onclick="marcarTodos(true)">
+                            <i class="fas fa-check-double"></i> Todos Presentes
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabela de Alunos da Turma para a Chamada -->
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.15rem;" id="titulo-chamada-turma">Lista de Alunos</h3>
+                            <p style="font-size: 0.82rem; color: var(--text-muted);">Alterne entre 'Presente' ou 'Falta' com 1 clique</p>
+                        </div>
+
+                        <button class="btn-vibe-primary" onclick="salvarChamadaVirtual()">
+                            <i class="fas fa-save"></i> Salvar Chamada Virtual
+                        </button>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="vibe-table">
+                            <thead>
+                                <tr>
+                                    <th>Aluno(a)</th>
+                                    <th>E-mail</th>
+                                    <th>Telefone</th>
+                                    <th style="text-align: center;">Presença na Aula</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-alunos-chamada">
+                                <!-- Preenchido dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA 3: MURAL & MATERIAIS -->
+            <div id="tab-comunicados" class="tab-content-panel">
+                <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 28px;">
+                    
+                    <!-- Form de Novo Comunicado / Música -->
+                    <div class="glass-panel" style="padding: 26px;">
+                        <h3 style="font-family: var(--font-heading); color: #fff; font-size: 1.25rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-paper-plane" style="color: var(--neon-pink);"></i> Publicar Recado ou Playlist
+                        </h3>
+
+                        <form id="form-novo-comunicado">
+                            <div class="vibe-form-group">
+                                <label for="comunicado-turma-select">Destinatário (Turma):</label>
+                                <select id="comunicado-turma-select" class="vibe-select" required>
+                                    <!-- Options inseridas via JS -->
+                                </select>
+                            </div>
+
+                            <div class="vibe-form-group">
+                                <label for="comunicado-titulo">Título do Comunicado / Playlist:</label>
+                                <input type="text" id="comunicado-titulo" class="vibe-input" placeholder="Ex: Coreografia do refrão no Spotify" required>
+                            </div>
+
+                            <div class="vibe-form-group">
+                                <label for="comunicado-conteudo">Mensagem / Observações da Aula:</label>
+                                <textarea id="comunicado-conteudo" class="vibe-textarea" rows="4" placeholder="Explique os passos, BPM ou orientações..." required></textarea>
+                            </div>
+
+                            <div class="vibe-form-group">
+                                <label for="comunicado-link">Link Externo (Spotify / YouTube / Drive):</label>
+                                <input type="url" id="comunicado-link" class="vibe-input" placeholder="https://open.spotify.com/... ou https://youtube.com/...">
+                            </div>
+
+                            <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="comunicado-urgente" style="width: 18px; height: 18px; accent-color: var(--neon-pink); cursor: pointer;">
+                                <label for="comunicado-urgente" style="font-size: 0.88rem; color: var(--text-secondary); cursor: pointer;">Marcar como Destaque / Importante</label>
+                            </div>
+
+                            <button type="submit" class="btn-vibe-primary" style="width: 100%;">
+                                <i class="fas fa-bullhorn"></i> Publicar para os Alunos
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Mural de Comunicados Publicados -->
+                    <div>
+                        <div class="section-header">
+                            <h3 class="section-title" style="font-size: 1.2rem;">
+                                <i class="fas fa-stream" style="color: var(--neon-cyan);"></i> Publicações Recentes
+                            </h3>
+                        </div>
+
+                        <div id="container-lista-comunicados" style="display: flex; flex-direction: column; gap: 16px;">
+                            <!-- Inserido dinamicamente via JS -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/state.js"></script>
+    <script src="../js/ui.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/auth-guard.js"></script>
+    <script src="professor.js"></script>
+</body>
+</html>

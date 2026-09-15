@@ -3,180 +3,497 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VibeDance - Entre na sua conta</title>
-    <!-- Importando o CSS global -->
-    <link rel="stylesheet" href="styles.css">
+    <title>VibeDance - Entre no Ritmo | Autenticação</title>
+    
+    <!-- Design System Tokens & Components -->
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/components.css">
+
     <style>
-        /* Substitui o comportamento padrão do body apenas para esta página */
-        body.login-page {
+        body.login-body {
+            background-color: var(--bg-base);
+            min-height: 100vh;
             display: flex;
-            flex-direction: row;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--cor-fundo);
+            align-items: stretch;
+            position: relative;
+            overflow-x: hidden;
         }
 
-        /* Lado Esquerdo: Marca e Vibe (Visual) */
-        .login-banner {
-            flex: 1.2;
-            background: linear-gradient(135deg, var(--roxo-profundo) 0%, var(--roxo-vibrante) 100%);
-            color: var(--cor-branco);
+        /* Container Split Screen */
+        .login-split-wrapper {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+        }
+
+        /* Lado Esquerdo: A 'Vibe' (Visual Rítmico, Neon & Movimento) */
+        .vibe-showcase-panel {
+            flex: 1.25;
+            background: linear-gradient(135deg, #100820 0%, #1e113a 50%, #0d0618 100%);
+            position: relative;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            position: relative;
-            padding: 40px;
+            justify-content: space-between;
+            padding: 50px 60px;
+            overflow: hidden;
+            border-right: 1px solid var(--border-subtle);
         }
 
-        /* Formas geométricas abstratas para dar movimento ao fundo */
-        .forma-abstrata {
+        /* Luzes Cênicas de Palco */
+        .stage-light {
             position: absolute;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.05);
-            z-index: 0;
+            filter: blur(140px);
+            pointer-events: none;
         }
-        .forma-1 { width: 300px; height: 300px; top: -50px; left: -100px; }
-        .forma-2 { width: 500px; height: 500px; bottom: -150px; right: -150px; }
-        .forma-3 { width: 150px; height: 150px; top: 40%; left: 20%; background: rgba(184, 41, 255, 0.1); }
-
-        .banner-conteudo {
-            z-index: 1;
+        .light-purple {
+            width: 500px;
+            height: 500px;
+            top: -120px;
+            left: -100px;
+            background: rgba(168, 85, 247, 0.45);
+        }
+        .light-pink {
+            width: 450px;
+            height: 450px;
+            bottom: -80px;
+            right: -80px;
+            background: rgba(236, 72, 153, 0.4);
+        }
+        .light-cyan {
+            width: 300px;
+            height: 300px;
+            top: 45%;
+            left: 20%;
+            background: rgba(6, 182, 212, 0.25);
         }
 
-        .banner-conteudo h1 {
-            font-size: 3.5rem;
-            margin: 0;
-            letter-spacing: 2px;
-            text-shadow: 0 0 20px rgba(184, 41, 255, 0.8);
-        }
-
-        .banner-conteudo p {
-            font-size: 1.2rem;
-            opacity: 0.85;
-            margin-top: 10px;
-            font-weight: 300;
-        }
-
-        /* Lado Direito: Formulário de Login */
-        .login-form-area {
-            flex: 1;
+        /* Conteúdo do Banner */
+        .showcase-header {
+            z-index: 2;
             display: flex;
-            justify-content: center;
             align-items: center;
-            background: var(--cor-fundo);
-            position: relative;
+            gap: 12px;
         }
 
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            background: var(--cor-branco);
-            padding: 50px 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-            border-top: 5px solid var(--roxo-neon);
+        .showcase-brand-title {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: var(--grad-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
         }
 
-        .login-card h2 {
-            margin-top: 0;
-            color: var(--roxo-profundo);
-            font-size: 28px;
-            margin-bottom: 10px;
+        .showcase-hero {
+            z-index: 2;
+            max-width: 540px;
+            margin: auto 0;
         }
 
-        .login-card p.subtitulo {
-            color: #777;
+        .live-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(236, 72, 153, 0.15);
+            border: 1px solid rgba(236, 72, 153, 0.4);
+            color: var(--neon-pink);
+            padding: 6px 14px;
+            border-radius: var(--radius-full);
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 22px;
+        }
+
+        .hero-headline {
+            font-family: var(--font-heading);
+            font-size: 3.4rem;
+            font-weight: 900;
+            line-height: 1.12;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .hero-headline span {
+            background: var(--grad-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 35px rgba(236, 72, 153, 0.4);
+        }
+
+        .hero-subtext {
+            font-size: 1.12rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
             margin-bottom: 30px;
-            font-size: 15px;
         }
 
-        /* Estilizando os inputs com ícones embutidos */
-        .input-icon-wrapper {
+        /* Equalizador estilizado no banner */
+        .showcase-sound-card {
+            background: rgba(22, 14, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glow);
+            border-radius: var(--radius-md);
+            padding: 16px 22px;
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .showcase-footer {
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+
+        /* Lado Direito: Formulário de Autenticação */
+        .vibe-auth-panel {
+            flex: 1;
+            background: var(--bg-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
             position: relative;
-            margin-bottom: 25px;
         }
 
-        .input-icon-wrapper i {
+        .auth-card {
+            width: 100%;
+            max-width: 440px;
+            background: var(--bg-card);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 42px 36px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            position: relative;
+        }
+
+        .auth-card::before {
+            content: '';
             position: absolute;
-            top: 50%;
-            left: 15px;
-            transform: translateY(-50%);
-            color: #aaa;
-            font-size: 18px;
+            top: -1px;
+            left: 20%;
+            right: 20%;
+            height: 2px;
+            background: var(--grad-primary);
+            box-shadow: 0 0 15px var(--neon-purple);
         }
 
-        .input-icon-wrapper input {
-            padding-left: 45px;
+        .auth-card-header {
+            margin-bottom: 28px;
+        }
+
+        .auth-card-header h2 {
+            font-family: var(--font-heading);
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .auth-card-header p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+        }
+
+        /* Input Wrappers com Ícone e Feedback */
+        .auth-field {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .auth-field label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group i.input-icon {
+            position: absolute;
+            left: 16px;
+            color: var(--text-muted);
+            font-size: 1rem;
+            transition: color var(--transition-fast);
+        }
+
+        .input-group input {
+            width: 100%;
             height: 50px;
-            border: 2px solid #e0e0e0;
-            transition: all 0.3s ease;
+            padding: 0 45px 0 48px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            outline: none;
+            transition: all var(--transition-fast);
         }
 
-        .input-icon-wrapper input:focus {
-            border-color: var(--roxo-vibrante);
-            box-shadow: 0 0 10px rgba(108, 99, 255, 0.1);
+        .input-group input:focus {
+            border-color: var(--neon-purple);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
         }
 
-        .input-icon-wrapper input:focus + i,
-        .input-icon-wrapper input:valid + i {
-            color: var(--roxo-vibrante);
+        .input-group input:focus ~ i.input-icon {
+            color: var(--neon-purple);
         }
 
-        /* Responsividade para telas menores (celulares) */
-        @media (max-width: 768px) {
-            body.login-page { flex-direction: column; }
-            .login-banner { flex: 0.6; padding: 20px; }
-            .banner-conteudo h1 { font-size: 2.5rem; }
-            .login-card { padding: 30px 20px; box-shadow: none; border: none; background: transparent; }
+        .btn-toggle-eye {
+            position: absolute;
+            right: 14px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 8px;
+            font-size: 1rem;
+            transition: color var(--transition-fast);
+        }
+
+        .btn-toggle-eye:hover {
+            color: var(--neon-cyan);
+        }
+
+        .field-error-msg {
+            display: none;
+            font-size: 0.8rem;
+            color: #f87171;
+            margin-top: 6px;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Alerta Geral de Erro */
+        .auth-alert {
+            display: none;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            font-size: 0.88rem;
+            margin-bottom: 22px;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Demo Quick Access */
+        .demo-access-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 28px 0 18px;
+            color: var(--text-dim);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .demo-access-divider::before, .demo-access-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        .demo-pills-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .demo-pill-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 10px 8px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .demo-pill-btn:hover {
+            background: rgba(168, 85, 247, 0.18);
+            border-color: var(--neon-purple);
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .demo-pill-btn.admin:hover { border-color: var(--neon-amber); }
+        .demo-pill-btn.prof:hover { border-color: var(--neon-pink); }
+        .demo-pill-btn.aluno:hover { border-color: var(--neon-cyan); }
+
+        /* Responsividade */
+        @media (max-width: 960px) {
+            .login-split-wrapper { flex-direction: column; }
+            .vibe-showcase-panel { padding: 40px 24px; min-height: 380px; }
+            .hero-headline { font-size: 2.2rem; }
+            .vibe-auth-panel { padding: 30px 16px; }
+            .auth-card { padding: 30px 20px; box-shadow: none; }
         }
     </style>
 </head>
-<body class="login-page">
+<body class="login-body">
 
-    <!-- Lado Esquerdo Visual -->
-    <div class="login-banner">
-        <div class="forma-abstrata forma-1"></div>
-        <div class="forma-abstrata forma-2"></div>
-        <div class="forma-abstrata forma-3"></div>
+    <div class="login-split-wrapper">
         
-        <div class="banner-conteudo">
-            <h1><i class="fas fa-compact-disc"></i> VibeDance</h1>
-            <p>O ritmo do seu estúdio, organizado em um só lugar.</p>
-        </div>
-    </div>
+        <!-- LADO ESQUERDO: Experiência Visual 'The Vibe' -->
+        <section class="vibe-showcase-panel">
+            <div class="stage-light light-purple"></div>
+            <div class="stage-light light-pink"></div>
+            <div class="stage-light light-cyan"></div>
 
-    <!-- Lado Direito Formulário -->
-    <div class="login-form-area">
-        <div class="login-card">
-            <h2>Bem-vindo de volta!</h2>
-            <p class="subtitulo">Insira suas credenciais para acessar sua conta.</p>
-
-            <form id="form-login">
-                <div class="input-icon-wrapper">
-                    <i class="fas fa-envelope"></i>
-                    <input type="email" id="email" required placeholder="Seu e-mail cadastrado">
+            <div class="showcase-header">
+                <div class="brand-icon-box">
+                    <i class="fas fa-compact-disc"></i>
                 </div>
-                
-                <div class="input-icon-wrapper">
-                    <i class="fas fa-lock"></i>
-                    <input type="password" id="senha" required placeholder="Sua senha secreta">
-                </div>
-                
-                <button type="submit" class="btn-acao" style="height: 50px; font-size: 18px; margin-top: 10px;">
-                    Entrar no Sistema <i class="fas fa-arrow-right" style="margin-left: 10px;"></i>
-                </button>
-            </form>
-            
-            <div style="text-align: center; margin-top: 25px;">
-                <a href="#" style="color: var(--roxo-vibrante); text-decoration: none; font-size: 14px; font-weight: 600;">Esqueceu sua senha?</a>
+                <div class="showcase-brand-title">VibeDance</div>
             </div>
-        </div>
+
+            <div class="showcase-hero">
+                <div class="live-tag">
+                    <i class="fas fa-bolt"></i> Plataforma Inteligente de Dança
+                </div>
+
+                <h1 class="hero-headline">
+                    Sinta o <span>Beat</span>.<br>
+                    Viva a Dança.
+                </h1>
+
+                <p class="hero-subtext">
+                    A experiência completa para alunos apaixonados, professores visionários e estúdios modernos. Gerencie turmas, chamada virtual, playlists e coreografias em tempo real.
+                </p>
+
+                <!-- Card de Demonstração de Áudio e Onda Sonora -->
+                <div class="showcase-sound-card">
+                    <div class="soundwave-visualizer">
+                        <div class="soundwave-bar"></div>
+                        <div class="soundwave-bar"></div>
+                        <div class="soundwave-bar"></div>
+                        <div class="soundwave-bar"></div>
+                        <div class="soundwave-bar"></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.88rem; font-weight: 700; color: #fff;">Ritmo em Movimento</div>
+                        <div style="font-size: 0.78rem; color: var(--text-muted);">180+ alunos dançando hoje</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="showcase-footer">
+                <div><i class="fas fa-shield-alt" style="color: var(--neon-emerald); margin-right: 6px;"></i> RBAC Seguro & JWT</div>
+                <div>•</div>
+                <div>Tecnologia Web Moderna</div>
+            </div>
+        </section>
+
+        <!-- LADO DIREITO: Card de Autenticação -->
+        <section class="vibe-auth-panel">
+            <div class="auth-card">
+                
+                <div class="auth-card-header">
+                    <h2>Bem-vindo(a)!</h2>
+                    <p>Entre com suas credenciais para acessar seu estúdio.</p>
+                </div>
+
+                <!-- Banner de Alerta Dinâmico -->
+                <div id="auth-alert" class="auth-alert">
+                    <i class="fas fa-exclamation-circle" style="font-size: 1.1rem;"></i>
+                    <span id="auth-alert-text">Erro na autenticação</span>
+                </div>
+
+                <form id="form-login" novalidate>
+                    <!-- Campo E-mail -->
+                    <div class="auth-field">
+                        <label for="email">E-mail Cadastrado</label>
+                        <div class="input-group">
+                            <i class="fas fa-envelope input-icon"></i>
+                            <input type="email" id="email" placeholder="seu.email@vibedance.com" required autocomplete="email">
+                        </div>
+                        <div id="email-error" class="field-error-msg">
+                            <i class="fas fa-info-circle"></i> <span>E-mail inválido</span>
+                        </div>
+                    </div>
+
+                    <!-- Campo Senha -->
+                    <div class="auth-field">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label for="senha" style="margin-bottom: 0;">Sua Senha</label>
+                            <a href="#" id="link-esqueci-senha" style="font-size: 0.78rem; color: var(--neon-purple); text-decoration: none; font-weight: 600;">Esqueceu?</a>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
+                            <button type="button" class="btn-toggle-eye" id="btn-toggle-senha" title="Mostrar/Ocultar Senha">
+                                <i class="fas fa-eye" id="eye-icon"></i>
+                            </button>
+                        </div>
+                        <div id="senha-error" class="field-error-msg">
+                            <i class="fas fa-info-circle"></i> <span>A senha precisa de no mínimo 6 caracteres</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-submit-login" class="btn-vibe-primary" style="width: 100%; height: 50px; font-size: 1rem; margin-top: 10px;">
+                        <span>Entrar no Sistema</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- Divisor de Demonstração com 1 Clique -->
+                <div class="demo-access-divider">
+                    <span>Acesso Rápido (Demonstração)</span>
+                </div>
+
+                <div class="demo-pills-grid">
+                    <button type="button" class="demo-pill-btn admin" onclick="executarDemoLogin('ADMINISTRADOR')">
+                        <i class="fas fa-crown" style="color: var(--neon-amber); font-size: 1.1rem;"></i>
+                        <span>Admin</span>
+                    </button>
+
+                    <button type="button" class="demo-pill-btn prof" onclick="executarDemoLogin('PROFESSOR')">
+                        <i class="fas fa-user-tie" style="color: var(--neon-pink); font-size: 1.1rem;"></i>
+                        <span>Professor</span>
+                    </button>
+
+                    <button type="button" class="demo-pill-btn aluno" onclick="executarDemoLogin('ALUNO')">
+                        <i class="fas fa-music" style="color: var(--neon-cyan); font-size: 1.1rem;"></i>
+                        <span>Aluno</span>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
     </div>
 
-    <!-- Mantemos a mesma lógica de redirecionamento que já criamos -->
+    <!-- Scripts da Aplicação -->
+    <script src="js/state.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
     <script src="login.js"></script>
 </body>
 </html>
