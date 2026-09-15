@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeDance - Meu Painel</title>
+    <!-- O CSS que criamos acima -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- BARRA LATERAL (SIDEBAR) -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <i class="fas fa-compact-disc"></i> VibeDance
+        </div>
+        <ul class="nav-menu">
+            <li class="ativo"><i class="fas fa-music"></i> Modalidades</li>
+            <li><i class="fas fa-calendar-alt"></i> Minhas Aulas</li>
+            <li><i class="fas fa-wallet"></i> Financeiro</li>
+            <li><i class="fas fa-user-circle"></i> Meu Perfil</li>
+            <li style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1);">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </li>
+        </ul>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="main-content">
+        
+        <!-- CABEÇALHO DA PÁGINA -->
+        <header class="header-boas-vindas">
+            <div>
+                <h1>E aí, pronto para dançar?</h1>
+                <p>Escolha sua modalidade e reserve sua vaga nas turmas abertas.</p>
+            </div>
+            <div class="perfil-usuario">
+                <div class="avatar">AL</div>
+                <span style="font-weight: 600; color: #2b0a3d;">Aluno Vibe</span>
+                <i class="fas fa-chevron-down" style="color: #ccc; cursor: pointer;"></i>
+            </div>
+        </header>
+
+        <!-- GRID DE MODALIDADES (Exemplo estático para visualizar o design) -->
+        <div class="grid-modalidades" id="modalidades-grid">
+            
+            <!-- Card 1 -->
+            <div class="card-danca">
+                <div class="card-icon"><i class="fas fa-shoe-prints"></i></div>
+                <div class="card-content">
+                    <h3>Ballet Clássico</h3>
+                    <p>Desenvolva postura, flexibilidade e técnica com aulas fluídas e focadas.</p>
+                    <button class="btn-acao">Ver Turmas</button>
+                </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="card-danca">
+                <div class="card-icon"><i class="fas fa-fire-alt"></i></div>
+                <div class="card-content">
+                    <h3>Dança Urbana</h3>
+                    <p>Ritmo, expressão e muita atitude. Coreografias intensas e modernas.</p>
+                    <button class="btn-acao">Ver Turmas</button>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="card-danca">
+                <div class="card-icon"><i class="fas fa-users"></i></div>
+                <div class="card-content">
+                    <h3>Dança de Salão</h3>
+                    <p>Aprenda a dançar a dois com os ritmos mais clássicos e envolventes.</p>
+                    <button class="btn-acao">Ver Turmas</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- AQUI ENTRARIA O SEU aluno.js PARA RENDERIZAR OS CARDS DINAMICAMENTE -->
+    <script src="aluno.js"></script>
+</body>
+</html>

@@ -4,13 +4,17 @@ const API_URL = 'http://localhost:8080/api';
 document.addEventListener('DOMContentLoaded', () => {
     carregarModalidades();
     
-    // Intercepta o envio do formulário de modalidades
+    // Intercepta os envios dos formulários
     document.getElementById('form-modalidade').addEventListener('submit', salvarModalidade);
+    
+    // NOVO: Escuta o formulário de Turmas
+    document.getElementById('form-turma').addEventListener('submit', salvarTurma);
 });
 
-/**
- * Busca as modalidades no Backend e preenche a tabela e o Select de Turmas
- */
+/* ==========================================
+   GERENCIAMENTO DE MODALIDADES
+========================================== */
+
 async function carregarModalidades() {
     try {
         const response = await fetch(`${API_URL}/modalidades`);
@@ -26,11 +30,8 @@ async function carregarModalidades() {
     }
 }
 
-/**
- * Envia uma nova modalidade para o Backend (POST)
- */
 async function salvarModalidade(evento) {
-    evento.preventDefault(); // Evita que a página recarregue
+    evento.preventDefault(); 
 
     const modalidade = {
         nome: document.getElementById('nome').value,
@@ -40,16 +41,14 @@ async function salvarModalidade(evento) {
     try {
         const response = await fetch(`${API_URL}/modalidades`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(modalidade)
         });
 
         if (response.ok) {
             alert('Modalidade salva com sucesso!');
-            document.getElementById('form-modalidade').reset(); // Limpa o formulário
-            carregarModalidades(); // Recarrega a lista atualizada
+            document.getElementById('form-modalidade').reset(); 
+            carregarModalidades(); 
         } else {
             alert('Erro ao salvar a modalidade.');
         }
@@ -58,12 +57,9 @@ async function salvarModalidade(evento) {
     }
 }
 
-/**
- * Renderiza os dados na tabela de Modalidades
- */
 function atualizarTabelaModalidades(modalidades) {
     const tbody = document.getElementById('tabela-modalidades');
-    tbody.innerHTML = ''; // Limpa a tabela antes de preencher
+    tbody.innerHTML = ''; 
 
     modalidades.forEach(mod => {
         const tr = document.createElement('tr');
@@ -80,9 +76,6 @@ function atualizarTabelaModalidades(modalidades) {
     });
 }
 
-/**
- * Preenche o <select> do formulário de Turmas com as modalidades disponíveis
- */
 function atualizarSelectModalidades(modalidades) {
     const select = document.getElementById('modalidade-select');
     select.innerHTML = '<option value="">Selecione uma modalidade...</option>';
@@ -93,4 +86,54 @@ function atualizarSelectModalidades(modalidades) {
         option.textContent = mod.nome;
         select.appendChild(option);
     });
+}
+
+/* ==========================================
+   NOVO: GERENCIAMENTO DE TURMAS
+========================================== */
+
+async function salvarTurma(evento) {
+    evento.preventDefault();
+
+    const modalidadeId = document.getElementById('modalidade-select').value;
+    const dias = document.getElementById('dias').value;
+    let horario = document.getElementById('horario').value;
+    const vagas = document.getElementById('vagas').value;
+
+    if (!modalidadeId) {
+        alert('Por favor, selecione uma modalidade.');
+        return;
+    }
+
+    // O input type="time" do HTML retorna "HH:MM". 
+    // O Java LocalTime espera "HH:MM:SS". Adicionamos ":00" para evitar erros de Parse no backend.
+    if (horario.length === 5) {
+        horario = horario + ":00";
+    }
+
+    // Montamos o JSON exatamente como o Spring Boot espera
+    const turma = {
+        modalidade: { id: parseInt(modalidadeId) },
+        diasSemana: dias,
+        horario: horario,
+        limiteVagas: parseInt(vagas)
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/turmas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(turma)
+        });
+
+        if (response.ok) {
+            alert('Turma salva com sucesso!');
+            document.getElementById('form-turma').reset(); // Limpa o formulário de turmas
+        } else {
+            alert('Erro ao salvar a turma.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Falha ao conectar com o servidor.');
+    }
 }
