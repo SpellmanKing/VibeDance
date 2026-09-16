@@ -243,7 +243,13 @@ erDiagram
 
 ## 👥 Autoria & Desenvolvimento
 
-Projeto desenvolvido no âmbito do curso de Tecnologia / Desenvolvimento do **SENAC - DF**.
+Projeto desenvolvido para o **Projeto Integrador da Unieuro**.
+
+### 💻 Equipe de Desenvolvimento:
+- **CALEBE FERREIRA CARVALHO**
+- **JOÃO PAULO SILVA SERGIO**
+- **JUAN FELIPE DE MORAIS ZANGEROLAMI**
+- **MATEUS GABRIEL BEZERRA DE SOUZA**
 
 ---
 
