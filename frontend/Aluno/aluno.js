@@ -18,9 +18,19 @@ function inicializarPainelAluno() {
     }
 
     renderizarMinhasAulas(user.id);
+    renderizarFaturasAluno(user.id);
+    atualizarStatusAcessoTopo(user.id);
     renderizarMateriais();
     renderizarHistorico(user.id);
     renderizarTodasTurmas(user.id);
+
+    // Sincronização em tempo real (quando admin aprova ou há mudanças em qualquer aba)
+    if (window.VibeStore && typeof window.VibeStore.onSync === 'function') {
+        window.VibeStore.onSync(() => {
+            renderizarFaturasAluno(user.id);
+            atualizarStatusAcessoTopo(user.id);
+        });
+    }
 }
 
 /**
@@ -36,6 +46,9 @@ function trocarAba(tabId, btnElement) {
 
     if (btnElement) {
         btnElement.classList.add('active');
+    } else {
+        const correspondingBtn = document.getElementById(`tab-btn-${tabId}`);
+        if (correspondingBtn) correspondingBtn.classList.add('active');
     }
 }
 window.trocarAba = trocarAba;
@@ -313,3 +326,346 @@ function realizarMatricula(alunoId, turmaId) {
     }
 }
 window.realizarMatricula = realizarMatricula;
+
+// =========================================================================
+// --- MÓDULO DO ALUNO: GESTÃO DE FATURAS, PAGAMENTOS E COMPROVANTES ---
+// =========================================================================
+
+let faturaSelecionadaPix = null;
+let comprovanteBase64Temp = null;
+
+function atualizarStatusAcessoTopo(alunoId) {
+    const statusInfo = window.VibeStore.getStatusAcessoAluno(alunoId);
+    const pill = document.getElementById('aluno-access-badge-pill');
+    const textEl = document.getElementById('aluno-access-badge-text');
+    const iconEl = document.getElementById('aluno-access-icon');
+    const cardStatus = document.getElementById('status-acesso-fatura-card');
+
+    if (pill && textEl && iconEl) {
+        textEl.textContent = statusInfo.label;
+        iconEl.className = `fas ${statusInfo.icon}`;
+        
+        if (statusInfo.status === 'AUTORIZADO') {
+            pill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            pill.style.background = 'rgba(16, 185, 129, 0.12)';
+            textEl.style.color = 'var(--neon-emerald)';
+            iconEl.style.color = 'var(--neon-emerald)';
+        } else if (statusInfo.status === 'EM_ANALISE') {
+            pill.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+            pill.style.background = 'rgba(245, 158, 11, 0.12)';
+            textEl.style.color = 'var(--neon-amber)';
+            iconEl.style.color = 'var(--neon-amber)';
+        } else if (statusInfo.status === 'BLOQUEADO') {
+            pill.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+            pill.style.background = 'rgba(239, 68, 68, 0.12)';
+            textEl.style.color = '#ef4444';
+            iconEl.style.color = '#ef4444';
+        } else {
+            pill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+            pill.style.background = 'rgba(6, 182, 212, 0.12)';
+            textEl.style.color = 'var(--neon-cyan)';
+            iconEl.style.color = 'var(--neon-cyan)';
+        }
+    }
+
+    if (cardStatus) {
+        cardStatus.innerHTML = `
+            <span class="badge ${statusInfo.badgeClass}" style="font-size: 0.95rem; padding: 10px 18px;">
+                <i class="fas ${statusInfo.icon}"></i> ${statusInfo.label}
+            </span>
+        `;
+    }
+}
+window.atualizarStatusAcessoTopo = atualizarStatusAcessoTopo;
+
+function renderizarFaturasAluno(alunoId) {
+    const container = document.getElementById('container-faturas-aluno');
+    if (!container) return;
+
+    const faturas = window.VibeStore.getFaturas(alunoId);
+    container.innerHTML = '';
+
+    // Atualiza contador de faturas pendentes na sidebar
+    const pendentesCount = faturas.filter(f => f.status === 'PENDENTE' || f.status === 'VENCIDO').length;
+    const badgeSide = document.getElementById('badge-faturas-pendentes');
+    if (badgeSide) {
+        if (pendentesCount > 0) {
+            badgeSide.textContent = `${pendentesCount} pendente(s)`;
+            badgeSide.style.display = 'inline-block';
+        } else {
+            badgeSide.style.display = 'none';
+        }
+    }
+
+    if (faturas.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 40px; text-align: center; background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
+                <i class="fas fa-receipt" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 12px;"></i>
+                <h3 style="color: #fff;">Nenhuma fatura em aberto</h3>
+                <p style="color: var(--text-muted);">Suas cobranças e histórico aparecerão aqui quando você estiver matriculado em uma turma ativa.</p>
+            </div>
+        `;
+        return;
+    }
+
+    faturas.forEach(fatura => {
+        const card = document.createElement('div');
+        card.className = 'class-card';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.justifyContent = 'space-between';
+
+        let badgeStatus = '';
+        let botoesAcao = '';
+
+        const pagamento = window.VibeStore.getPagamentoByFatura(fatura.id);
+
+        if (fatura.status === 'CONFIRMADO') {
+            badgeStatus = `<span class="badge badge-green"><i class="fas fa-check-circle"></i> Confirmado</span>`;
+            botoesAcao = `
+                <div style="margin-top: 16px; display: flex; gap: 8px;">
+                    <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;" onclick="verComprovanteAluno(${fatura.id})">
+                        <i class="fas fa-file-invoice"></i> Ver Recibo / Comprovante
+                    </button>
+                </div>
+            `;
+        } else if (fatura.status === 'EM_ANALISE') {
+            badgeStatus = `<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>`;
+            botoesAcao = `
+                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;" onclick="verComprovanteAluno(${fatura.id})">
+                        <i class="fas fa-eye"></i> Visualizar Comprovante Enviado
+                    </button>
+                    <span style="font-size: 0.78rem; color: var(--text-muted); text-align: center;">Aguardando aprovação do administrador</span>
+                </div>
+            `;
+        } else if (fatura.status === 'VENCIDO') {
+            badgeStatus = `<span class="badge badge-red"><i class="fas fa-exclamation-triangle"></i> Vencido</span>`;
+            botoesAcao = `
+                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn-vibe-primary" style="width: 100%; font-size: 0.84rem; background: var(--grad-sunset);" onclick="abrirModalPix(${fatura.id})">
+                        <i class="fab fa-pix"></i> Pagar Agora via PIX
+                    </button>
+                    <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;" onclick="abrirModalUploadComprovante(${fatura.id})">
+                        <i class="fas fa-upload"></i> Anexar Comprovante Manual
+                    </button>
+                </div>
+            `;
+        } else {
+            // PENDENTE
+            badgeStatus = `<span class="badge badge-cyan"><i class="fas fa-clock"></i> Pendente</span>`;
+            botoesAcao = `
+                <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
+                    <button class="btn-vibe-primary" style="width: 100%; font-size: 0.84rem;" onclick="abrirModalPix(${fatura.id})">
+                        <i class="fab fa-pix"></i> Pagar via Pix Instantâneo
+                    </button>
+                    <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;" onclick="abrirModalUploadComprovante(${fatura.id})">
+                        <i class="fas fa-upload"></i> Anexar Comprovante
+                    </button>
+                </div>
+            `;
+        }
+
+        const dataVencFormatada = fatura.dataVencimento ? fatura.dataVencimento.split('-').reverse().join('/') : '-';
+        const valorFormatado = Number(fatura.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        card.innerHTML = `
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <span class="class-time-tag">
+                        <i class="fas fa-calendar-alt"></i> Vencimento: ${dataVencFormatada}
+                    </span>
+                    ${badgeStatus}
+                </div>
+
+                <h3 style="color: #fff; font-size: 1.15rem; font-family: var(--font-heading); margin-bottom: 6px;">
+                    ${fatura.titulo}
+                </h3>
+                <p style="color: var(--neon-cyan); font-size: 0.85rem; font-weight: 600; margin-bottom: 12px;">
+                    <i class="fas fa-layer-group"></i> ${fatura.turmaNome || 'Assinatura Mensal Geral'}
+                </p>
+
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Total:</span>
+                        <span style="font-size: 1.35rem; font-weight: 800; color: #fff; font-family: var(--font-heading);">${valorFormatado}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                        <span>Mês de Referência:</span>
+                        <strong style="color: var(--text-secondary);">${fatura.mesReferencia}</strong>
+                    </div>
+                </div>
+            </div>
+
+            ${botoesAcao}
+        `;
+
+        container.appendChild(card);
+    });
+}
+window.renderizarFaturasAluno = renderizarFaturasAluno;
+
+function abrirModalPix(faturaId) {
+    const fatura = window.VibeStore.getFaturaById(faturaId);
+    if (!fatura) return;
+
+    faturaSelecionadaPix = fatura;
+
+    const tituloEl = document.getElementById('modal-pix-fatura-titulo');
+    const valorEl = document.getElementById('modal-pix-valor');
+    const copiacolaEl = document.getElementById('modal-pix-copiacola');
+    const qrEl = document.getElementById('modal-pix-qrcode');
+
+    const valorFormatado = Number(fatura.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    if (tituloEl) tituloEl.textContent = fatura.titulo;
+    if (valorEl) valorEl.textContent = valorFormatado;
+    if (copiacolaEl) copiacolaEl.value = fatura.pixCopiaCola || `00020126580014br.gov.bcb.pix0136vibedance-${fatura.id}-${fatura.valor}`;
+    if (qrEl) {
+        qrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(copiacolaEl.value)}`;
+    }
+
+    window.VibeUI.openModal('modal-pix');
+}
+window.abrirModalPix = abrirModalPix;
+
+function copiarPixChave() {
+    const input = document.getElementById('modal-pix-copiacola');
+    if (input) {
+        input.select();
+        input.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(input.value).then(() => {
+            window.VibeUI.showToast('Código PIX Copia-e-Cola copiado para a área de transferência!', 'success');
+        }).catch(() => {
+            document.execCommand('copy');
+            window.VibeUI.showToast('Código PIX copiado com sucesso!', 'success');
+        });
+    }
+}
+window.copiarPixChave = copiarPixChave;
+
+function confirmarSimulacaoPix() {
+    if (!faturaSelecionadaPix) return;
+
+    const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
+    const alunoId = user ? user.id : faturaSelecionadaPix.alunoId;
+
+    const btn = document.getElementById('btn-simular-pix');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Processando no Banco Central...`;
+    }
+
+    setTimeout(() => {
+        const res = window.VibeStore.simularPagamentoPix(faturaSelecionadaPix.id, alunoId);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-check-circle"></i> Simular Confirmação Bancária Instantânea`;
+        }
+
+        window.VibeUI.closeModal('modal-pix');
+
+        if (res.success) {
+            window.VibeUI.showToast(res.message, 'success');
+            renderizarFaturasAluno(alunoId);
+            atualizarStatusAcessoTopo(alunoId);
+        } else {
+            window.VibeUI.showToast(res.message, 'error');
+        }
+    }, 700);
+}
+window.confirmarSimulacaoPix = confirmarSimulacaoPix;
+
+function abrirModalUploadComprovante(faturaId) {
+    const fatura = window.VibeStore.getFaturaById(faturaId);
+    if (!fatura) return;
+
+    document.getElementById('modal-upload-fatura-id').value = fatura.id;
+    document.getElementById('modal-upload-titulo').textContent = `${fatura.titulo} - ${Number(fatura.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+    document.getElementById('label-arquivo-selecionado').textContent = 'Clique para selecionar o comprovante';
+    document.getElementById('input-arquivo-comprovante').value = '';
+    document.getElementById('comprovante-obs').value = '';
+    comprovanteBase64Temp = null;
+
+    window.VibeUI.openModal('modal-upload-comprovante');
+}
+window.abrirModalUploadComprovante = abrirModalUploadComprovante;
+
+function arquivoSelecionadoHandler(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        document.getElementById('label-arquivo-selecionado').innerHTML = `
+            <span style="color: var(--neon-emerald); font-weight: 700;">
+                <i class="fas fa-check-circle"></i> ${file.name}
+            </span>
+            <br><small style="color: var(--text-muted); font-size: 0.75rem;">(${(file.size / 1024).toFixed(1)} KB)</small>
+        `;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            comprovanteBase64Temp = {
+                nome: file.name,
+                url: e.target.result
+            };
+        };
+        reader.readAsDataURL(file);
+    }
+}
+window.arquivoSelecionadoHandler = arquivoSelecionadoHandler;
+
+function enviarComprovanteSubmit(event) {
+    event.preventDefault();
+    const faturaId = document.getElementById('modal-upload-fatura-id').value;
+    const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
+    const alunoId = user ? user.id : 4;
+
+    const filePayload = comprovanteBase64Temp || {
+        nome: 'recibo_transferencia_aluno.jpg',
+        url: 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600'
+    };
+
+    const res = window.VibeStore.enviarComprovante(faturaId, alunoId, filePayload);
+    window.VibeUI.closeModal('modal-upload-comprovante');
+
+    if (res.success) {
+        window.VibeUI.showToast(res.message, 'success');
+        renderizarFaturasAluno(alunoId);
+        atualizarStatusAcessoTopo(alunoId);
+    } else {
+        window.VibeUI.showToast(res.message, 'error');
+    }
+}
+window.enviarComprovanteSubmit = enviarComprovanteSubmit;
+
+function verComprovanteAluno(faturaId) {
+    const fatura = window.VibeStore.getFaturaById(faturaId);
+    const pagamento = window.VibeStore.getPagamentoByFatura(faturaId);
+
+    const imgEl = document.getElementById('modal-ver-comprovante-img');
+    const nomeEl = document.getElementById('modal-ver-comprovante-nome');
+    const statusEl = document.getElementById('modal-ver-comprovante-status');
+    const dataEl = document.getElementById('modal-ver-comprovante-data');
+
+    if (imgEl) {
+        imgEl.src = (pagamento && pagamento.comprovanteUrl) ? pagamento.comprovanteUrl : 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600';
+    }
+    if (nomeEl) {
+        nomeEl.textContent = (pagamento && pagamento.comprovanteNome) ? pagamento.comprovanteNome : 'comprovante_pagamento.pdf';
+    }
+    if (statusEl) {
+        const st = fatura ? fatura.status : (pagamento ? pagamento.status : 'CONFIRMADO');
+        if (st === 'CONFIRMADO') {
+            statusEl.innerHTML = `<span class="badge badge-green"><i class="fas fa-check"></i> Pago & Confirmado</span>`;
+        } else if (st === 'EM_ANALISE') {
+            statusEl.innerHTML = `<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>`;
+        } else {
+            statusEl.innerHTML = `<span class="badge badge-cyan">${st}</span>`;
+        }
+    }
+    if (dataEl) {
+        dataEl.textContent = (pagamento && pagamento.dataEnvio) ? new Date(pagamento.dataEnvio).toLocaleString('pt-BR') : '16/09/2026';
+    }
+
+    window.VibeUI.openModal('modal-ver-comprovante');
+}
+window.verComprovanteAluno = verComprovanteAluno;

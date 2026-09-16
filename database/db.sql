@@ -123,16 +123,55 @@ CREATE TABLE IF NOT EXISTS aulas_particulares (
     observacoes TEXT
 );
 
--- 11. Histórico Financeiro e Pagamentos
+-- 11. Módulo Financeiro: Faturas e Cobranças de Mensalidades
+CREATE TABLE IF NOT EXISTS faturas (
+    id_fatura SERIAL PRIMARY KEY,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    id_turma INT REFERENCES turmas(id_turma) ON DELETE SET NULL,
+    id_pacote INT REFERENCES pacotes(id_pacote) ON DELETE SET NULL,
+    titulo VARCHAR(150) NOT NULL,
+    mes_referencia VARCHAR(7) NOT NULL, -- Ex: '2026-09'
+    valor DECIMAL(10, 2) NOT NULL,
+    data_vencimento DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE' CHECK (status IN ('PENDENTE', 'EM_ANALISE', 'CONFIRMADO', 'VENCIDO', 'CANCELADO')),
+    pix_copia_cola TEXT,
+    pix_qrcode_url TEXT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_faturas_aluno_status ON faturas(id_aluno, status);
+
+-- 12. Histórico de Pagamentos, Transações e Comprovantes
 CREATE TABLE IF NOT EXISTS pagamentos (
     id_pagamento SERIAL PRIMARY KEY,
+    id_fatura INT NOT NULL REFERENCES faturas(id_fatura) ON DELETE CASCADE,
     id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
-    id_matricula INT REFERENCES matriculas(id_matricula) ON DELETE SET NULL,
-    id_pacote INT REFERENCES pacotes(id_pacote) ON DELETE SET NULL,
-    valor DECIMAL(10, 2) NOT NULL,
-    forma_pagamento VARCHAR(20) NOT NULL CHECK (forma_pagamento IN ('PIX', 'CARTAO', 'BOLETO')),
-    status VARCHAR(20) NOT NULL CHECK (status IN ('PAGO', 'PENDENTE', 'CANCELADO')),
-    data_pagamento TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    forma_pagamento VARCHAR(30) NOT NULL CHECK (forma_pagamento IN ('PIX', 'CARTAO_CREDITO', 'BOLETO', 'COMPROVANTE_MANUAL')),
+    valor_pago DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE' CHECK (status IN ('PENDENTE', 'EM_ANALISE', 'CONFIRMADO', 'RECUSADO', 'ESTORNADO')),
+    comprovante_url TEXT,
+    comprovante_nome VARCHAR(255),
+    gateway_transacao_id VARCHAR(100),
+    comprovante_enviado_em TIMESTAMP,
+    data_confirmacao TIMESTAMP,
+    validado_por INT REFERENCES usuarios(id_usuario) ON DELETE SET NULL,
+    observacao TEXT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_pagamentos_fatura ON pagamentos(id_fatura);
+
+-- 13. Auditoria e Segurança de Transações (RBAC Compliance)
+CREATE TABLE IF NOT EXISTS auditoria_pagamentos (
+    id_auditoria SERIAL PRIMARY KEY,
+    id_pagamento INT NOT NULL REFERENCES pagamentos(id_pagamento) ON DELETE CASCADE,
+    id_usuario_operador INT NOT NULL REFERENCES usuarios(id_usuario),
+    acao VARCHAR(50) NOT NULL, -- 'CRIACAO', 'UPLOAD_COMPROVANTE', 'APROVACAO_MANUAL', 'REJEICAO_MANUAL', 'GATEWAY_WEBHOOK'
+    status_anterior VARCHAR(20),
+    status_novo VARCHAR(20),
+    motivo_observacao TEXT,
+    ip_origem VARCHAR(45),
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==========================================================
@@ -212,3 +251,24 @@ INSERT INTO presencas (id_turma, id_aluno, data_aula, presente) VALUES
 (2, 4, CURRENT_DATE, TRUE),
 (2, 6, CURRENT_DATE, TRUE)
 ON CONFLICT (id_turma, id_aluno, data_aula) DO NOTHING;
+
+-- Inserção de Faturas Demonstrativas
+INSERT INTO faturas (id_fatura, id_aluno, id_turma, id_pacote, titulo, mes_referencia, valor, data_vencimento, status, pix_copia_cola) VALUES
+(1, 4, 1, 1, 'Mensalidade Setembro/2026 - Hip Hop Mastercrew', '2026-09', 189.90, CURRENT_DATE + INTERVAL '5 days', 'CONFIRMADO', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCD'),
+(2, 5, 1, 1, 'Mensalidade Setembro/2026 - Hip Hop Mastercrew', '2026-09', 189.90, CURRENT_DATE + INTERVAL '5 days', 'EM_ANALISE', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCE'),
+(3, 6, 2, 1, 'Mensalidade Setembro/2026 - Jazz Funk Commercial', '2026-09', 189.90, CURRENT_DATE - INTERVAL '3 days', 'VENCIDO', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCF'),
+(4, 7, 1, 1, 'Mensalidade Setembro/2026 - Hip Hop Mastercrew', '2026-09', 189.90, CURRENT_DATE + INTERVAL '10 days', 'PENDENTE', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABDA')
+ON CONFLICT (id_fatura) DO NOTHING;
+
+-- Inserção de Pagamentos e Comprovantes
+INSERT INTO pagamentos (id_pagamento, id_fatura, id_aluno, forma_pagamento, valor_pago, status, comprovante_url, comprovante_nome, comprovante_enviado_em, data_confirmacao, validado_por) VALUES
+(1, 1, 4, 'PIX', 189.90, 'CONFIRMADO', 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600', 'comprovante_pix_juliana.pdf', CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '2 days', 1),
+(2, 2, 5, 'COMPROVANTE_MANUAL', 189.90, 'EM_ANALISE', 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600', 'ted_itau_lucas_rocha.jpg', CURRENT_TIMESTAMP - INTERVAL '1 hour', NULL, NULL)
+ON CONFLICT (id_pagamento) DO NOTHING;
+
+-- Inserção de Auditoria de Operações
+INSERT INTO auditoria_pagamentos (id_auditoria, id_pagamento, id_usuario_operador, acao, status_anterior, status_novo, motivo_observacao, ip_origem) VALUES
+(1, 1, 4, 'UPLOAD_COMPROVANTE', 'PENDENTE', 'EM_ANALISE', 'Aluno enviou comprovante de transferência bancária via app', '189.40.12.55'),
+(2, 1, 1, 'APROVACAO_MANUAL', 'EM_ANALISE', 'CONFIRMADO', 'Comprovante verificado pelo Administrador Vibe com valor e data corretos', '177.135.20.10'),
+(3, 2, 5, 'UPLOAD_COMPROVANTE', 'PENDENTE', 'EM_ANALISE', 'Comprovante anexado pelo aluno aguardando conferência bancária', '189.40.12.88')
+ON CONFLICT (id_auditoria) DO NOTHING;

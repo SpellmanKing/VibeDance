@@ -36,6 +36,13 @@ function inicializarPainelProfessor() {
     popularSelectsTurma(user);
     carregarListaChamada();
     renderizarMuralComunicados(user);
+
+    // Sincronização em tempo real: reflete aprovações do admin ou pagamentos do aluno instantaneamente
+    if (window.VibeStore && typeof window.VibeStore.onSync === 'function') {
+        window.VibeStore.onSync(() => {
+            carregarListaChamada();
+        });
+    }
 }
 
 /**
@@ -185,6 +192,29 @@ function carregarListaChamada() {
 
         chamadaEstadoAtual.push({ alunoId: aluno.id, presente: presente });
 
+        // Consulta de status financeiro e liberação de acesso (Regra de Negócio RBAC)
+        const acessoInfo = window.VibeStore.getStatusAcessoAluno(aluno.id, turmaId);
+
+        let badgeAcessoHtml = '';
+        if (acessoInfo.status === 'AUTORIZADO') {
+            badgeAcessoHtml = `<span class="badge badge-green" title="Pagamento confirmado"><i class="fas fa-check-circle"></i> Acesso Autorizado</span>`;
+        } else if (acessoInfo.status === 'EM_ANALISE') {
+            badgeAcessoHtml = `<span class="badge badge-amber" title="Comprovante anexado aguardando ADM"><i class="fas fa-hourglass-half"></i> Em Análise</span>`;
+        } else if (acessoInfo.status === 'BLOQUEADO') {
+            badgeAcessoHtml = `<span class="badge badge-red" title="Mensalidade vencida sem quitação"><i class="fas fa-ban"></i> Acesso Bloqueado</span>`;
+        } else {
+            badgeAcessoHtml = `<span class="badge badge-cyan" title="Dentro do prazo de vencimento"><i class="fas fa-clock"></i> Tolerância</span>`;
+        }
+
+        let comprovanteHtml = `<span style="color: var(--text-dim); font-size: 0.8rem;">-</span>`;
+        if (acessoInfo.pagamento && acessoInfo.pagamento.comprovanteUrl) {
+            comprovanteHtml = `
+                <button class="btn-vibe-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="abrirModalComprovanteProf(${aluno.id}, ${turmaId})">
+                    <i class="fas fa-receipt"></i> Ver Comprovante
+                </button>
+            `;
+        }
+
         const tr = document.createElement('tr');
         tr.id = `row-aluno-${aluno.id}`;
 
@@ -194,11 +224,15 @@ function carregarListaChamada() {
             <td>
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <div class="user-avatar-circle" style="width: 34px; height: 34px; font-size: 0.8rem;">${initials}</div>
-                    <strong style="color: #fff;">${aluno.nome}</strong>
+                    <div>
+                        <strong style="color: #fff;">${aluno.nome}</strong>
+                        ${!acessoInfo.autorizado && acessoInfo.status === 'BLOQUEADO' ? '<div style="font-size: 0.72rem; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Inadimplente</div>' : ''}
+                    </div>
                 </div>
             </td>
             <td>${aluno.email}</td>
-            <td>${aluno.telefone || '(61) 98888-0000'}</td>
+            <td>${badgeAcessoHtml}</td>
+            <td style="text-align: center;">${comprovanteHtml}</td>
             <td style="text-align: center;">
                 <div class="attendance-toggle-group">
                     <button type="button" class="attendance-chip btn-presente ${presente ? 'active' : ''}" onclick="togglePresenca(${aluno.id}, true)">
@@ -216,6 +250,38 @@ function carregarListaChamada() {
     atualizarTaxaPresenca();
 }
 window.carregarListaChamada = carregarListaChamada;
+
+function abrirModalComprovanteProf(alunoId, turmaId) {
+    const aluno = window.VibeStore.getUsuarios().find(u => u.id === Number(alunoId));
+    const acessoInfo = window.VibeStore.getStatusAcessoAluno(alunoId, turmaId);
+
+    if (!acessoInfo || !acessoInfo.pagamento) {
+        window.VibeUI.showToast('Nenhum comprovante anexado para este aluno.', 'warning');
+        return;
+    }
+
+    const pagamento = acessoInfo.pagamento;
+    const fatura = acessoInfo.fatura;
+
+    const nomeEl = document.getElementById('modal-prof-aluno-nome');
+    const tituloEl = document.getElementById('modal-prof-fatura-titulo');
+    const imgEl = document.getElementById('modal-prof-comprovante-img');
+    const badgeEl = document.getElementById('modal-prof-status-badge');
+    const dataEl = document.getElementById('modal-prof-data-envio');
+
+    if (nomeEl) nomeEl.textContent = aluno ? aluno.nome : 'Aluno Vibe';
+    if (tituloEl) tituloEl.textContent = fatura ? fatura.titulo : 'Mensalidade da Turma';
+    if (imgEl) imgEl.src = pagamento.comprovanteUrl || 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600';
+    if (badgeEl) {
+        badgeEl.innerHTML = `<span class="badge ${acessoInfo.badgeClass}"><i class="fas ${acessoInfo.icon}"></i> ${acessoInfo.label}</span>`;
+    }
+    if (dataEl) {
+        dataEl.textContent = pagamento.dataEnvio ? new Date(pagamento.dataEnvio).toLocaleString('pt-BR') : '16/09/2026';
+    }
+
+    window.VibeUI.openModal('modal-ver-comprovante-prof');
+}
+window.abrirModalComprovanteProf = abrirModalComprovanteProf;
 
 /**
  * Altera a presença de um aluno individual

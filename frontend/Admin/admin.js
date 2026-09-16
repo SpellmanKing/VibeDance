@@ -26,6 +26,22 @@ function inicializarPainelAdmin() {
     popularSelectsTurmaAdmin();
     renderizarTabelaTurmasAdmin();
     renderizarTabelaModalidadesAdmin();
+
+    // Módulo Financeiro
+    renderizarKpisFinanceirosAdmin();
+    renderizarFilaComprovantesAdmin();
+    popularSelectTurmasFinanceiro();
+    renderizarTabelaTransacoesAdmin();
+
+    // Sincronização em tempo real (quando aluno anexa comprovante ou paga via Pix)
+    if (window.VibeStore && typeof window.VibeStore.onSync === 'function') {
+        window.VibeStore.onSync(() => {
+            renderizarKpisFinanceirosAdmin();
+            renderizarFilaComprovantesAdmin();
+            renderizarTabelaTransacoesAdmin();
+            atualizarKpis();
+        });
+    }
 }
 
 /**
@@ -41,6 +57,9 @@ function trocarAbaAdmin(tabId, btnElement) {
 
     if (btnElement) {
         btnElement.classList.add('active');
+    } else {
+        const correspondingBtn = document.getElementById(`tab-btn-${tabId}`);
+        if (correspondingBtn) correspondingBtn.classList.add('active');
     }
 }
 window.trocarAbaAdmin = trocarAbaAdmin;
@@ -425,3 +444,400 @@ function salvarNovaModalidadeAdmin(e) {
     popularSelectsTurmaAdmin();
     renderizarTabelaModalidadesAdmin();
 }
+
+// =========================================================================
+// --- MÓDULO DO ADMINISTRADOR: GESTÃO FINANCEIRA, COMPROVANTES E AUDITORIA ---
+// =========================================================================
+
+let filtroStatusTransacao = 'TODOS';
+let pagamentoSelecionadoAdminId = null;
+
+function renderizarKpisFinanceirosAdmin() {
+    const kpis = window.VibeStore.getKpisFinanceirosAdmin();
+
+    const elReceita = document.getElementById('kpi-fin-receita');
+    const elPendente = document.getElementById('kpi-fin-pendente');
+    const elInadimplencia = document.getElementById('kpi-fin-inadimplencia');
+    const elInadimplenteValor = document.getElementById('kpi-fin-inadimplente-valor');
+    const elProjecao = document.getElementById('kpi-fin-projecao');
+    const elCompCount = document.getElementById('kpi-fin-comprovantes-count');
+    const badgeSidebar = document.getElementById('badge-admin-comprovantes-pendentes');
+    const badgeFila = document.getElementById('badge-total-fila-comprovantes');
+
+    if (elReceita) elReceita.textContent = kpis.receitaTotal;
+    if (elPendente) elPendente.textContent = kpis.valorPendente;
+    if (elInadimplencia) elInadimplencia.textContent = kpis.taxaInadimplencia;
+    if (elInadimplenteValor) elInadimplenteValor.textContent = `${kpis.totalInadimplente} em atraso`;
+    if (elProjecao) elProjecao.textContent = kpis.projecaoMensal;
+
+    if (elCompCount) {
+        elCompCount.textContent = `${kpis.comprovantesEmAnaliseQtd} comprovante(s) em análise`;
+    }
+
+    if (badgeSidebar) {
+        if (kpis.comprovantesEmAnaliseQtd > 0) {
+            badgeSidebar.textContent = `${kpis.comprovantesEmAnaliseQtd} novo(s)`;
+            badgeSidebar.style.display = 'inline-block';
+        } else {
+            badgeSidebar.style.display = 'none';
+        }
+    }
+
+    if (badgeFila) {
+        badgeFila.textContent = `${kpis.comprovantesEmAnaliseQtd} pendente(s)`;
+    }
+}
+window.renderizarKpisFinanceirosAdmin = renderizarKpisFinanceirosAdmin;
+
+function renderizarFilaComprovantesAdmin() {
+    const container = document.getElementById('container-fila-comprovantes');
+    if (!container) return;
+
+    const pendentes = window.VibeStore.getComprovantesPendentes();
+    container.innerHTML = '';
+
+    if (pendentes.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 36px; text-align: center; background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); border: 1px dashed var(--border-subtle);">
+                <i class="fas fa-check-circle" style="font-size: 2.2rem; color: var(--neon-emerald); margin-bottom: 10px;"></i>
+                <h4 style="color: #fff; margin-bottom: 4px;">Fila de Comprovantes Zerada!</h4>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">Todos os comprovantes anexados pelos alunos foram devidamente auditados e validados.</p>
+            </div>
+        `;
+        return;
+    }
+
+    pendentes.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'glass-panel';
+        card.style.padding = '18px';
+        card.style.border = '1px solid rgba(245, 158, 11, 0.4)';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.justifyContent = 'space-between';
+        card.style.gap = '14px';
+
+        const valorFormatado = Number(p.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const dataFormatada = p.dataEnvio ? new Date(p.dataEnvio).toLocaleString('pt-BR') : 'Hoje';
+
+        card.innerHTML = `
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                    <div>
+                        <strong style="color: #fff; font-size: 1.05rem; display: block;">${p.alunoNome}</strong>
+                        <span style="font-size: 0.78rem; color: var(--text-muted);">${p.alunoEmail || ''}</span>
+                    </div>
+                    <span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>
+                </div>
+
+                <div style="display: flex; gap: 14px; align-items: center; background: rgba(0,0,0,0.25); padding: 10px; border-radius: var(--radius-sm); margin-bottom: 10px;">
+                    <div style="width: 55px; height: 55px; border-radius: 6px; overflow: hidden; background: #000; flex-shrink: 0; border: 1px solid var(--border-subtle); cursor: pointer;" onclick="abrirModalAprovarComprovante(${p.id})">
+                        <img src="${p.comprovanteUrl || 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600'}" alt="Comprovante" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <span style="font-size: 0.78rem; color: var(--neon-cyan); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <i class="fas fa-music"></i> ${p.turmaNome}
+                        </span>
+                        <div style="font-size: 1.15rem; font-weight: 800; color: var(--neon-emerald); font-family: var(--font-heading);">
+                            ${valorFormatado}
+                        </div>
+                        <span style="font-size: 0.72rem; color: var(--text-dim);">Enviado em: ${dataFormatada}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-vibe-secondary" style="flex: 1; font-size: 0.8rem; padding: 7px 10px;" onclick="abrirModalAprovarComprovante(${p.id})">
+                    <i class="fas fa-eye"></i> Analisar
+                </button>
+                <button class="btn-vibe-secondary" style="border-color: rgba(239, 68, 68, 0.4); color: #ef4444; font-size: 0.8rem; padding: 7px 10px;" onclick="abrirModalRejeitarAdmin(${p.id})">
+                    <i class="fas fa-times"></i> Recusar
+                </button>
+                <button class="btn-vibe-primary" style="flex: 1.2; font-size: 0.8rem; padding: 7px 10px;" onclick="aprovarComprovanteDireto(${p.id})">
+                    <i class="fas fa-check"></i> Aprovar
+                </button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+window.renderizarFilaComprovantesAdmin = renderizarFilaComprovantesAdmin;
+
+function popularSelectTurmasFinanceiro() {
+    const select = document.getElementById('filtro-turma-transacoes');
+    if (!select) return;
+
+    const turmas = window.VibeStore.getTurmas();
+    select.innerHTML = '<option value="TODAS">Todas as Turmas</option>' + 
+        turmas.map(t => `<option value="${t.id}">${t.nome}</option>`).join('');
+}
+
+function filtrarStatusTransacao(status, btnElement) {
+    filtroStatusTransacao = status;
+
+    const container = btnElement.parentElement;
+    if (container) {
+        container.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+        btnElement.classList.add('active');
+    }
+
+    renderizarTabelaTransacoesAdmin();
+}
+window.filtrarStatusTransacao = filtrarStatusTransacao;
+
+function filtrarTabelaTransacoes() {
+    renderizarTabelaTransacoesAdmin();
+}
+window.filtrarTabelaTransacoes = filtrarTabelaTransacoes;
+
+function renderizarTabelaTransacoesAdmin() {
+    const tbody = document.getElementById('tabela-transacoes-corpo');
+    if (!tbody) return;
+
+    const buscaInput = document.getElementById('filtro-busca-transacoes');
+    const turmaSelect = document.getElementById('filtro-turma-transacoes');
+
+    const filtros = {
+        status: filtroStatusTransacao,
+        turmaId: turmaSelect ? turmaSelect.value : 'TODAS',
+        busca: buscaInput ? buscaInput.value : ''
+    };
+
+    const transacoes = window.VibeStore.getTransacoesAnaliticas(filtros);
+    tbody.innerHTML = '';
+
+    if (transacoes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    Nenhuma transação encontrada com os filtros selecionados.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    transacoes.forEach(t => {
+        const tr = document.createElement('tr');
+
+        let statusBadge = '';
+        if (t.status === 'CONFIRMADO') {
+            statusBadge = `<span class="badge badge-green"><i class="fas fa-check-circle"></i> Confirmado</span>`;
+        } else if (t.status === 'EM_ANALISE') {
+            statusBadge = `<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>`;
+        } else if (t.status === 'VENCIDO') {
+            statusBadge = `<span class="badge badge-red"><i class="fas fa-exclamation-triangle"></i> Vencido</span>`;
+        } else {
+            statusBadge = `<span class="badge badge-cyan"><i class="fas fa-clock"></i> Pendente</span>`;
+        }
+
+        let comprovanteCol = `<span style="color: var(--text-dim); font-size: 0.8rem;">-</span>`;
+        if (t.comprovanteUrl) {
+            comprovanteCol = `
+                <button class="btn-vibe-secondary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="abrirModalAprovarComprovante(${t.pagamentoId})">
+                    <i class="fas fa-file-invoice"></i> Ver Anexo
+                </button>
+            `;
+        }
+
+        let acoesCol = '';
+        if (t.status === 'EM_ANALISE' && t.pagamentoId) {
+            acoesCol = `
+                <button class="btn-vibe-primary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="aprovarComprovanteDireto(${t.pagamentoId})" title="Aprovar Comprovante">
+                    <i class="fas fa-check"></i> Aprovar
+                </button>
+                <button class="btn-vibe-secondary" style="padding: 4px 8px; font-size: 0.75rem; color: #ef4444;" onclick="abrirModalRejeitarAdmin(${t.pagamentoId})" title="Recusar">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+        } else if (t.status === 'CONFIRMADO') {
+            acoesCol = `<span style="font-size: 0.78rem; color: var(--neon-emerald);"><i class="fas fa-lock"></i> Liberado</span>`;
+        } else {
+            acoesCol = `<span style="font-size: 0.78rem; color: var(--text-muted);">Aguardando</span>`;
+        }
+
+        const dataVencFormatada = t.dataVencimento ? t.dataVencimento.split('-').reverse().join('/') : '-';
+        const valorFormatado = Number(t.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        tr.innerHTML = `
+            <td>
+                <strong style="color: #fff; display: block; font-size: 0.88rem;">${t.titulo}</strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">Ref: ${t.mesReferencia}</span>
+            </td>
+            <td>
+                <span style="color: #fff; font-weight: 600;">${t.alunoNome}</span>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">${t.alunoEmail}</div>
+            </td>
+            <td><span class="badge badge-purple" style="font-size: 0.75rem;">${t.turmaNome}</span></td>
+            <td><strong style="color: var(--neon-emerald); font-family: var(--font-heading);">${valorFormatado}</strong></td>
+            <td><span style="font-size: 0.85rem; color: var(--text-secondary);">${dataVencFormatada}</span></td>
+            <td>${statusBadge}</td>
+            <td>${comprovanteCol}</td>
+            <td style="text-align: right; white-space: nowrap;">${acoesCol}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+window.renderizarTabelaTransacoesAdmin = renderizarTabelaTransacoesAdmin;
+
+function abrirModalAprovarComprovante(pagamentoId) {
+    const pagamentos = window.VibeStore.getPagamentos();
+    const pagamento = pagamentos.find(p => p.id === Number(pagamentoId));
+    if (!pagamento) return;
+
+    pagamentoSelecionadoAdminId = pagamento.id;
+    const fatura = window.VibeStore.getFaturaById(pagamento.faturaId);
+    const aluno = window.VibeStore.getUsuarios().find(u => u.id === pagamento.alunoId);
+
+    const alunoEl = document.getElementById('modal-admin-comp-aluno');
+    const valorEl = document.getElementById('modal-admin-comp-valor');
+    const turmaEl = document.getElementById('modal-admin-comp-turma');
+    const dataEl = document.getElementById('modal-admin-comp-data');
+    const imgEl = document.getElementById('modal-admin-comp-img');
+    const btnAprovar = document.getElementById('btn-admin-aprovar-comp');
+    const btnRejeitar = document.getElementById('btn-admin-rejeitar-comp');
+
+    if (alunoEl) alunoEl.textContent = aluno ? aluno.nome : pagamento.alunoNome;
+    if (valorEl) valorEl.textContent = Number(pagamento.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    if (turmaEl) turmaEl.textContent = fatura ? (fatura.turmaNome || 'Turma Regular') : 'Mensalidade Vibe';
+    if (dataEl) dataEl.textContent = pagamento.dataEnvio ? new Date(pagamento.dataEnvio).toLocaleString('pt-BR') : 'Hoje';
+    if (imgEl) imgEl.src = pagamento.comprovanteUrl || 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600';
+
+    if (pagamento.status === 'CONFIRMADO') {
+        if (btnAprovar) btnAprovar.style.display = 'none';
+        if (btnRejeitar) btnRejeitar.style.display = 'none';
+    } else {
+        if (btnAprovar) btnAprovar.style.display = 'inline-flex';
+        if (btnRejeitar) btnRejeitar.style.display = 'inline-flex';
+    }
+
+    window.VibeUI.openModal('modal-admin-ver-comprovante');
+}
+window.abrirModalAprovarComprovante = abrirModalAprovarComprovante;
+
+function confirmarAprovacaoAdmin() {
+    if (!pagamentoSelecionadoAdminId) return;
+
+    const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
+    const adminId = user ? user.id : 1;
+    const adminNome = user ? user.nome : 'Administrador Vibe';
+
+    const res = window.VibeStore.aprovarComprovanteAdmin(pagamentoSelecionadoAdminId, adminId, adminNome);
+    window.VibeUI.closeModal('modal-admin-ver-comprovante');
+
+    if (res.success) {
+        window.VibeUI.showToast(res.message, 'success');
+        renderizarKpisFinanceirosAdmin();
+        renderizarFilaComprovantesAdmin();
+        renderizarTabelaTransacoesAdmin();
+    } else {
+        window.VibeUI.showToast(res.message, 'error');
+    }
+}
+window.confirmarAprovacaoAdmin = confirmarAprovacaoAdmin;
+
+function aprovarComprovanteDireto(pagamentoId) {
+    const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
+    const adminId = user ? user.id : 1;
+    const adminNome = user ? user.nome : 'Administrador Vibe';
+
+    const res = window.VibeStore.aprovarComprovanteAdmin(pagamentoId, adminId, adminNome);
+    if (res.success) {
+        window.VibeUI.showToast(res.message, 'success');
+        renderizarKpisFinanceirosAdmin();
+        renderizarFilaComprovantesAdmin();
+        renderizarTabelaTransacoesAdmin();
+    } else {
+        window.VibeUI.showToast(res.message, 'error');
+    }
+}
+window.aprovarComprovanteDireto = aprovarComprovanteDireto;
+
+function abrirModalRejeitarAdmin(pagamentoId = null) {
+    if (pagamentoId) {
+        pagamentoSelecionadoAdminId = pagamentoId;
+    }
+    document.getElementById('admin-rejeicao-motivo').value = 'Comprovante ilegível ou cortado';
+    document.getElementById('group-outro-motivo').style.display = 'none';
+    document.getElementById('admin-rejeicao-texto').value = '';
+
+    window.VibeUI.openModal('modal-admin-rejeitar');
+}
+window.abrirModalRejeitarAdmin = abrirModalRejeitarAdmin;
+
+function motivoPredefinidoHandler(select) {
+    const groupOutro = document.getElementById('group-outro-motivo');
+    if (groupOutro) {
+        groupOutro.style.display = select.value === 'OUTRO' ? 'block' : 'none';
+    }
+}
+window.motivoPredefinidoHandler = motivoPredefinidoHandler;
+
+function confirmarRejeicaoAdmin() {
+    if (!pagamentoSelecionadoAdminId) return;
+
+    const select = document.getElementById('admin-rejeicao-motivo');
+    const textoOutro = document.getElementById('admin-rejeicao-texto');
+    const motivo = select.value === 'OUTRO' ? (textoOutro.value || 'Comprovante inconsistente') : select.value;
+
+    const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
+    const adminId = user ? user.id : 1;
+    const adminNome = user ? user.nome : 'Administrador Vibe';
+
+    const res = window.VibeStore.rejeitarComprovanteAdmin(pagamentoSelecionadoAdminId, adminId, adminNome, motivo);
+
+    window.VibeUI.closeModal('modal-admin-rejeitar');
+    window.VibeUI.closeModal('modal-admin-ver-comprovante');
+
+    if (res.success) {
+        window.VibeUI.showToast(res.message, 'warning');
+        renderizarKpisFinanceirosAdmin();
+        renderizarFilaComprovantesAdmin();
+        renderizarTabelaTransacoesAdmin();
+    } else {
+        window.VibeUI.showToast(res.message, 'error');
+    }
+}
+window.confirmarRejeicaoAdmin = confirmarRejeicaoAdmin;
+
+function abrirModalAuditoria() {
+    const tbody = document.getElementById('tabela-auditoria-corpo');
+    if (!tbody) return;
+
+    const logs = window.VibeStore.getAuditoria();
+    tbody.innerHTML = '';
+
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    Nenhum registro de auditoria gerado ainda.
+                </td>
+            </tr>
+        `;
+    } else {
+        logs.forEach(l => {
+            const tr = document.createElement('tr');
+            let transicao = '';
+            if (l.statusAnterior && l.statusNovo) {
+                transicao = `<span style="font-size: 0.78rem;">${l.statusAnterior} &rarr; <strong style="color: var(--neon-cyan);">${l.statusNovo}</strong></span>`;
+            } else {
+                transicao = `<span style="font-size: 0.78rem; color: var(--text-dim);">-</span>`;
+            }
+
+            tr.innerHTML = `
+                <td><span style="font-size: 0.8rem; color: var(--text-secondary);">${l.dataHora}</span></td>
+                <td><strong style="color: #fff; font-size: 0.85rem;">${l.operadorNome || 'Sistema'}</strong></td>
+                <td><span class="badge badge-purple" style="font-size: 0.72rem;">${l.acao}</span></td>
+                <td>${transicao}</td>
+                <td style="font-size: 0.82rem; color: var(--text-muted); max-width: 260px;">${l.observacao || ''}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    window.VibeUI.openModal('modal-admin-auditoria');
+}
+window.abrirModalAuditoria = abrirModalAuditoria;

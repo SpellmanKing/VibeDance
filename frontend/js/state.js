@@ -59,10 +59,157 @@ const VibeStore = (function() {
         comunicados: [
             { id: 1, turmaId: 1, professorId: 2, professorNome: 'Prof. Diego Santos', titulo: '🔥 Ensaio Extra para o Showcase de Inverno!', conteudo: 'Galera, na próxima quarta-feira ficaremos 20 minutos extras para alinhar a formação do refrão. Tragam tênis de sola macia!', link: 'https://vibedance.studio/showcase-info', urgente: true, data: 'Hoje às 14:30' },
             { id: 2, turmaId: 2, professorId: 3, professorNome: 'Profa. Camila Dança', titulo: '✨ Playlist da nova coreografia atualizada!', conteudo: 'Adicionei as 3 novas faixas que vamos usar no módulo de chão (floorwork). Ouçam para decorar as pausas rítmicas!', link: 'https://open.spotify.com/playlist/vibedance-jazzfunk', urgente: false, data: 'Ontem às 18:10' }
+        ],
+        faturas: [
+            {
+                id: 1,
+                alunoId: 4,
+                alunoNome: 'Juliana Paiva',
+                turmaId: 1,
+                turmaNome: 'Hip Hop Mastercrew',
+                titulo: 'Mensalidade Setembro/2026 - Hip Hop',
+                mesReferencia: '2026-09',
+                valor: 189.90,
+                dataVencimento: '2026-09-25',
+                status: 'CONFIRMADO',
+                pixCopiaCola: '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCD'
+            },
+            {
+                id: 2,
+                alunoId: 5,
+                alunoNome: 'Lucas Rocha',
+                turmaId: 1,
+                turmaNome: 'Hip Hop Mastercrew',
+                titulo: 'Mensalidade Setembro/2026 - Hip Hop',
+                mesReferencia: '2026-09',
+                valor: 189.90,
+                dataVencimento: '2026-09-25',
+                status: 'EM_ANALISE',
+                pixCopiaCola: '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCE'
+            },
+            {
+                id: 3,
+                alunoId: 6,
+                alunoNome: 'Mariana Lima',
+                turmaId: 2,
+                turmaNome: 'Jazz Funk Commercial Vibe',
+                titulo: 'Mensalidade Setembro/2026 - Jazz Funk',
+                mesReferencia: '2026-09',
+                valor: 189.90,
+                dataVencimento: '2026-09-10',
+                status: 'VENCIDO',
+                pixCopiaCola: '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCF'
+            },
+            {
+                id: 4,
+                alunoId: 7,
+                alunoNome: 'Gabriel Souza',
+                turmaId: 1,
+                turmaNome: 'Hip Hop Mastercrew',
+                titulo: 'Mensalidade Setembro/2026 - Hip Hop',
+                mesReferencia: '2026-09',
+                valor: 189.90,
+                dataVencimento: '2026-09-30',
+                status: 'PENDENTE',
+                pixCopiaCola: '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABDA'
+            },
+            {
+                id: 5,
+                alunoId: 4,
+                alunoNome: 'Juliana Paiva',
+                turmaId: 2,
+                turmaNome: 'Jazz Funk Commercial Vibe',
+                titulo: 'Mensalidade Setembro/2026 - Jazz Funk',
+                mesReferencia: '2026-09',
+                valor: 189.90,
+                dataVencimento: '2026-09-28',
+                status: 'PENDENTE',
+                pixCopiaCola: '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABDB'
+            }
+        ],
+        pagamentos: [
+            {
+                id: 1,
+                faturaId: 1,
+                alunoId: 4,
+                alunoNome: 'Juliana Paiva',
+                formaPagamento: 'PIX',
+                valor: 189.90,
+                status: 'CONFIRMADO',
+                comprovanteUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600',
+                comprovanteNome: 'comprovante_pix_juliana.pdf',
+                dataEnvio: '2026-09-14T10:30:00.000Z',
+                dataConfirmacao: '2026-09-14T11:00:00.000Z',
+                validadoPor: 1,
+                validadoPorNome: 'Administrador Vibe'
+            },
+            {
+                id: 2,
+                faturaId: 2,
+                alunoId: 5,
+                alunoNome: 'Lucas Rocha',
+                formaPagamento: 'COMPROVANTE_MANUAL',
+                valor: 189.90,
+                status: 'EM_ANALISE',
+                comprovanteUrl: 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600',
+                comprovanteNome: 'ted_itau_lucas_rocha.jpg',
+                dataEnvio: '2026-09-16T14:15:00.000Z',
+                dataConfirmacao: null,
+                validadoPor: null,
+                validadoPorNome: null
+            }
+        ],
+        auditoria: [
+            {
+                id: 1,
+                pagamentoId: 1,
+                faturaId: 1,
+                operadorId: 4,
+                operadorNome: 'Juliana Paiva',
+                acao: 'UPLOAD_COMPROVANTE',
+                statusAnterior: 'PENDENTE',
+                statusNovo: 'EM_ANALISE',
+                dataHora: '14/09/2026 10:30',
+                observacao: 'Aluno enviou comprovante de transferência bancária via aplicativo'
+            },
+            {
+                id: 2,
+                pagamentoId: 1,
+                faturaId: 1,
+                operadorId: 1,
+                operadorNome: 'Administrador Vibe',
+                acao: 'APROVACAO_MANUAL',
+                statusAnterior: 'EM_ANALISE',
+                statusNovo: 'CONFIRMADO',
+                dataHora: '14/09/2026 11:00',
+                observacao: 'Comprovante verificado pelo Administrador Vibe com valor e data corretos'
+            },
+            {
+                id: 3,
+                pagamentoId: 2,
+                faturaId: 2,
+                operadorId: 5,
+                operadorNome: 'Lucas Rocha',
+                acao: 'UPLOAD_COMPROVANTE',
+                statusAnterior: 'PENDENTE',
+                statusNovo: 'EM_ANALISE',
+                dataHora: '16/09/2026 14:15',
+                observacao: 'Comprovante anexado pelo aluno aguardando conferência bancária'
+            }
         ]
     };
 
-    // Carrega ou inicializa no LocalStorage
+    // Canal de Sincronização Realtime entre abas
+    let syncBroadcast = null;
+    try {
+        if (typeof BroadcastChannel !== 'undefined') {
+            syncBroadcast = new BroadcastChannel('vibedance_sync_channel');
+        }
+    } catch (e) {
+        console.warn('BroadcastChannel não suportado neste navegador:', e);
+    }
+
+    // Carrega ou inicializa no LocalStorage com migração suave
     function getDB() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
@@ -70,7 +217,24 @@ const VibeStore = (function() {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
                 return initialData;
             }
-            return JSON.parse(raw);
+            const data = JSON.parse(raw);
+            let updated = false;
+            if (!data.faturas || data.faturas.length === 0) {
+                data.faturas = initialData.faturas;
+                updated = true;
+            }
+            if (!data.pagamentos) {
+                data.pagamentos = initialData.pagamentos;
+                updated = true;
+            }
+            if (!data.auditoria) {
+                data.auditoria = initialData.auditoria;
+                updated = true;
+            }
+            if (updated) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+            return data;
         } catch (e) {
             console.error('Falha ao ler LocalStorage:', e);
             return initialData;
@@ -80,6 +244,14 @@ const VibeStore = (function() {
     function saveDB(data) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            
+            // 1. Notifica abas via BroadcastChannel em tempo real
+            if (syncBroadcast) {
+                syncBroadcast.postMessage({ type: 'VIBE_STATE_UPDATED', timestamp: Date.now() });
+            }
+
+            // 2. Notifica a própria aba localmente
+            window.dispatchEvent(new CustomEvent('vibedance_sync_event', { detail: { timestamp: Date.now() } }));
         } catch (e) {
             console.error('Falha ao salvar LocalStorage:', e);
         }
@@ -280,6 +452,453 @@ const VibeStore = (function() {
                 taxaOcupacao: `${taxaOcupacao}%`,
                 faturamentoEstimado
             };
+        },
+
+        // =========================================================================
+        // --- MÓDULO FINANCEIRO: FATURAS, PAGAMENTOS E CONTROLE DE ACESSO RBAC ---
+        // =========================================================================
+
+        getFaturas: function(alunoId = null) {
+            const db = getDB();
+            let lista = db.faturas || [];
+            if (alunoId) {
+                lista = lista.filter(f => f.alunoId === Number(alunoId));
+            }
+            return lista;
+        },
+
+        getFaturaById: function(id) {
+            const db = getDB();
+            return (db.faturas || []).find(f => f.id === Number(id));
+        },
+
+        getPagamentos: function() {
+            return getDB().pagamentos || [];
+        },
+
+        getPagamentoByFatura: function(faturaId) {
+            const db = getDB();
+            return (db.pagamentos || []).find(p => p.faturaId === Number(faturaId));
+        },
+
+        getAuditoria: function() {
+            return getDB().auditoria || [];
+        },
+
+        /**
+         * Regra de Negócio: Liberação e Bloqueio de Acesso a Aulas
+         * Retorna se o aluno tem presença/acesso autorizado, em análise ou bloqueado
+         */
+        getStatusAcessoAluno: function(alunoId, turmaId) {
+            const db = getDB();
+            const faturasAluno = (db.faturas || []).filter(f => f.alunoId === Number(alunoId));
+            
+            // Prioriza fatura vinculada à turma específica, senão busca fatura geral do mês
+            let fatura = faturasAluno.find(f => f.turmaId === Number(turmaId));
+            if (!fatura && faturasAluno.length > 0) {
+                fatura = faturasAluno[0];
+            }
+
+            if (!fatura) {
+                return {
+                    status: 'AUTORIZADO',
+                    label: 'Acesso Liberado (Cortesia/Trial)',
+                    badgeClass: 'badge-green',
+                    icon: 'fa-check-circle',
+                    fatura: null,
+                    pagamento: null,
+                    autorizado: true
+                };
+            }
+
+            const pagamento = (db.pagamentos || []).find(p => p.faturaId === fatura.id);
+
+            switch (fatura.status) {
+                case 'CONFIRMADO':
+                    return {
+                        status: 'AUTORIZADO',
+                        label: 'Acesso Autorizado',
+                        badgeClass: 'badge-green',
+                        icon: 'fa-check-circle',
+                        fatura: fatura,
+                        pagamento: pagamento,
+                        autorizado: true
+                    };
+                case 'EM_ANALISE':
+                    return {
+                        status: 'EM_ANALISE',
+                        label: 'Comprovante em Análise',
+                        badgeClass: 'badge-amber',
+                        icon: 'fa-hourglass-half',
+                        fatura: fatura,
+                        pagamento: pagamento,
+                        autorizado: false,
+                        permiteVisualizarComprovante: Boolean(pagamento && pagamento.comprovanteUrl)
+                    };
+                case 'VENCIDO':
+                    return {
+                        status: 'BLOQUEADO',
+                        label: 'Acesso Bloqueado (Vencido)',
+                        badgeClass: 'badge-red',
+                        icon: 'fa-ban',
+                        fatura: fatura,
+                        pagamento: pagamento,
+                        autorizado: false
+                    };
+                case 'PENDENTE':
+                default:
+                    return {
+                        status: 'PENDENTE',
+                        label: 'Acesso Tolerância (Pendente)',
+                        badgeClass: 'badge-cyan',
+                        icon: 'fa-clock',
+                        fatura: fatura,
+                        pagamento: pagamento,
+                        autorizado: true // Período de tolerância antes do vencimento
+                    };
+            }
+        },
+
+        /**
+         * Aluno: Envia comprovante de pagamento para validação
+         */
+        enviarComprovante: function(faturaId, alunoId, fileData) {
+            const db = getDB();
+            const fatura = (db.faturas || []).find(f => f.id === Number(faturaId));
+            const aluno = (db.usuarios || []).find(u => u.id === Number(alunoId));
+
+            if (!fatura) return { success: false, message: 'Fatura não encontrada.' };
+
+            const statusAnterior = fatura.status;
+            fatura.status = 'EM_ANALISE';
+
+            // Atualiza ou cria pagamento
+            let pagamento = (db.pagamentos || []).find(p => p.faturaId === fatura.id);
+            if (!pagamento) {
+                pagamento = {
+                    id: Date.now(),
+                    faturaId: fatura.id,
+                    alunoId: fatura.alunoId,
+                    alunoNome: aluno ? aluno.nome : fatura.alunoNome,
+                    formaPagamento: 'COMPROVANTE_MANUAL',
+                    valor: fatura.valor,
+                    status: 'EM_ANALISE',
+                    comprovanteUrl: fileData.url || 'https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=600',
+                    comprovanteNome: fileData.nome || 'comprovante_transferencia.jpg',
+                    dataEnvio: new Date().toISOString(),
+                    dataConfirmacao: null,
+                    validadoPor: null,
+                    validadoPorNome: null
+                };
+                db.pagamentos.push(pagamento);
+            } else {
+                pagamento.status = 'EM_ANALISE';
+                pagamento.comprovanteUrl = fileData.url || pagamento.comprovanteUrl;
+                pagamento.comprovanteNome = fileData.nome || pagamento.comprovanteNome;
+                pagamento.dataEnvio = new Date().toISOString();
+            }
+
+            // Registra auditoria
+            db.auditoria = db.auditoria || [];
+            db.auditoria.unshift({
+                id: Date.now() + Math.floor(Math.random() * 100),
+                pagamentoId: pagamento.id,
+                faturaId: fatura.id,
+                operadorId: aluno ? aluno.id : Number(alunoId),
+                operadorNome: aluno ? aluno.nome : 'Aluno Vibe',
+                acao: 'UPLOAD_COMPROVANTE',
+                statusAnterior: statusAnterior,
+                statusNovo: 'EM_ANALISE',
+                dataHora: new Date().toLocaleString('pt-BR'),
+                observacao: `Comprovante (${pagamento.comprovanteNome}) anexado para conferência`
+            });
+
+            saveDB(db);
+            return { success: true, message: 'Comprovante enviado com sucesso! Aguarde a aprovação do administrador.', fatura, pagamento };
+        },
+
+        /**
+         * Aluno: Simula pagamento automático instantâneo via Pix
+         */
+        simularPagamentoPix: function(faturaId, alunoId) {
+            const db = getDB();
+            const fatura = (db.faturas || []).find(f => f.id === Number(faturaId));
+            const aluno = (db.usuarios || []).find(u => u.id === Number(alunoId));
+
+            if (!fatura) return { success: false, message: 'Fatura não encontrada.' };
+
+            const statusAnterior = fatura.status;
+            fatura.status = 'CONFIRMADO';
+
+            let pagamento = (db.pagamentos || []).find(p => p.faturaId === fatura.id);
+            const agoraIso = new Date().toISOString();
+
+            if (!pagamento) {
+                pagamento = {
+                    id: Date.now(),
+                    faturaId: fatura.id,
+                    alunoId: fatura.alunoId,
+                    alunoNome: aluno ? aluno.nome : fatura.alunoNome,
+                    formaPagamento: 'PIX',
+                    valor: fatura.valor,
+                    status: 'CONFIRMADO',
+                    comprovanteUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600',
+                    comprovanteNome: `pix_automatico_${Date.now()}.pdf`,
+                    dataEnvio: agoraIso,
+                    dataConfirmacao: agoraIso,
+                    validadoPor: 0,
+                    validadoPorNome: 'Gateway Integrado (PIX API)'
+                };
+                db.pagamentos.push(pagamento);
+            } else {
+                pagamento.status = 'CONFIRMADO';
+                pagamento.formaPagamento = 'PIX';
+                pagamento.dataConfirmacao = agoraIso;
+                pagamento.validadoPorNome = 'Gateway Integrado (PIX API)';
+            }
+
+            // Auditoria
+            db.auditoria = db.auditoria || [];
+            db.auditoria.unshift({
+                id: Date.now() + Math.floor(Math.random() * 100),
+                pagamentoId: pagamento.id,
+                faturaId: fatura.id,
+                operadorId: 0,
+                operadorNome: 'Gateway Integrado',
+                acao: 'CONFIRMACAO_AUTOMATICA_PIX',
+                statusAnterior: statusAnterior,
+                statusNovo: 'CONFIRMADO',
+                dataHora: new Date().toLocaleString('pt-BR'),
+                observacao: 'Pagamento Pix liquidado instantaneamente pelo Banco Central'
+            });
+
+            saveDB(db);
+            return { success: true, message: 'Pagamento PIX confirmado com sucesso! Acesso às aulas desbloqueado imediatamente.', fatura, pagamento };
+        },
+
+        /**
+         * Admin: Aprovação manual de comprovante
+         */
+        aprovarComprovanteAdmin: function(pagamentoId, adminId, adminNome) {
+            const db = getDB();
+            const pagamento = (db.pagamentos || []).find(p => p.id === Number(pagamentoId));
+            if (!pagamento) return { success: false, message: 'Pagamento não localizado.' };
+
+            const fatura = (db.faturas || []).find(f => f.id === pagamento.faturaId);
+            const statusAnterior = pagamento.status;
+            const agoraIso = new Date().toISOString();
+
+            pagamento.status = 'CONFIRMADO';
+            pagamento.dataConfirmacao = agoraIso;
+            pagamento.validadoPor = Number(adminId);
+            pagamento.validadoPorNome = adminNome || 'Administrador Vibe';
+
+            if (fatura) {
+                fatura.status = 'CONFIRMADO';
+            }
+
+            db.auditoria = db.auditoria || [];
+            db.auditoria.unshift({
+                id: Date.now() + Math.floor(Math.random() * 100),
+                pagamentoId: pagamento.id,
+                faturaId: fatura ? fatura.id : null,
+                operadorId: Number(adminId),
+                operadorNome: adminNome || 'Administrador Vibe',
+                acao: 'APROVACAO_MANUAL',
+                statusAnterior: statusAnterior,
+                statusNovo: 'CONFIRMADO',
+                dataHora: new Date().toLocaleString('pt-BR'),
+                observacao: 'Comprovante verificado e aprovado com sucesso'
+            });
+
+            saveDB(db);
+            return { success: true, message: 'Comprovante aprovado! Acesso do aluno liberado com badge verde em todas as telas.', pagamento, fatura };
+        },
+
+        /**
+         * Admin: Rejeição de comprovante com justificativa
+         */
+        rejeitarComprovanteAdmin: function(pagamentoId, adminId, adminNome, motivo) {
+            const db = getDB();
+            const pagamento = (db.pagamentos || []).find(p => p.id === Number(pagamentoId));
+            if (!pagamento) return { success: false, message: 'Pagamento não localizado.' };
+
+            const fatura = (db.faturas || []).find(f => f.id === pagamento.faturaId);
+            const statusAnterior = pagamento.status;
+
+            pagamento.status = 'RECUSADO';
+            pagamento.observacao = motivo || 'Comprovante ilegível ou com valor divergente';
+            pagamento.validadoPor = Number(adminId);
+            pagamento.validadoPorNome = adminNome || 'Administrador Vibe';
+
+            if (fatura) {
+                fatura.status = 'PENDENTE';
+            }
+
+            db.auditoria = db.auditoria || [];
+            db.auditoria.unshift({
+                id: Date.now() + Math.floor(Math.random() * 100),
+                pagamentoId: pagamento.id,
+                faturaId: fatura ? fatura.id : null,
+                operadorId: Number(adminId),
+                operadorNome: adminNome || 'Administrador Vibe',
+                acao: 'REJEICAO_MANUAL',
+                statusAnterior: statusAnterior,
+                statusNovo: 'RECUSADO',
+                dataHora: new Date().toLocaleString('pt-BR'),
+                observacao: `Comprovante rejeitado: ${motivo}`
+            });
+
+            saveDB(db);
+            return { success: true, message: 'Comprovante rejeitado. O aluno foi notificado para enviar novo documento.', pagamento, fatura };
+        },
+
+        /**
+         * Admin: Métricas consolidadas em tempo real
+         */
+        getKpisFinanceirosAdmin: function() {
+            const db = getDB();
+            const faturas = db.faturas || [];
+
+            let receitaTotal = 0;
+            let valorPendente = 0;
+            let totalInadimplente = 0;
+            let qtdVencidas = 0;
+            let qtdConfirmadas = 0;
+            let qtdEmAnalise = 0;
+
+            faturas.forEach(f => {
+                const val = Number(f.valor) || 0;
+                if (f.status === 'CONFIRMADO') {
+                    receitaTotal += val;
+                    qtdConfirmadas++;
+                } else if (f.status === 'EM_ANALISE') {
+                    valorPendente += val;
+                    qtdEmAnalise++;
+                } else if (f.status === 'PENDENTE') {
+                    valorPendente += val;
+                } else if (f.status === 'VENCIDO') {
+                    totalInadimplente += val;
+                    qtdVencidas++;
+                }
+            });
+
+            const totalFaturas = faturas.length;
+            const taxaInadimplencia = totalFaturas > 0 ? Math.round((qtdVencidas / totalFaturas) * 100) : 0;
+            const projecaoMensal = receitaTotal + valorPendente;
+
+            return {
+                receitaTotal: receitaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                receitaTotalRaw: receitaTotal,
+                valorPendente: valorPendente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                valorPendenteRaw: valorPendente,
+                totalInadimplente: totalInadimplente.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                taxaInadimplencia: `${taxaInadimplencia}%`,
+                projecaoMensal: projecaoMensal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                projecaoMensalRaw: projecaoMensal,
+                comprovantesEmAnaliseQtd: qtdEmAnalise,
+                totalTransacoes: (db.pagamentos || []).length
+            };
+        },
+
+        /**
+         * Admin: Fila prioritária de comprovantes pendentes de aprovação
+         */
+        getComprovantesPendentes: function() {
+            const db = getDB();
+            const pendentes = (db.pagamentos || []).filter(p => p.status === 'EM_ANALISE');
+            return pendentes.map(p => {
+                const fatura = (db.faturas || []).find(f => f.id === p.faturaId);
+                const aluno = (db.usuarios || []).find(u => u.id === p.alunoId);
+                return {
+                    ...p,
+                    faturaTitulo: fatura ? fatura.titulo : 'Mensalidade Vibe',
+                    faturaVencimento: fatura ? fatura.dataVencimento : '-',
+                    turmaNome: fatura ? fatura.turmaNome : 'Turma Regular',
+                    alunoEmail: aluno ? aluno.email : '',
+                    alunoTelefone: aluno ? aluno.telefone : ''
+                };
+            });
+        },
+
+        /**
+         * Admin: Tabela analítica com filtros dinâmicos
+         */
+        getTransacoesAnaliticas: function(filtros = {}) {
+            const db = getDB();
+            let lista = (db.faturas || []).map(f => {
+                const pagamento = (db.pagamentos || []).find(p => p.faturaId === f.id);
+                const aluno = (db.usuarios || []).find(u => u.id === f.alunoId);
+                return {
+                    faturaId: f.id,
+                    pagamentoId: pagamento ? pagamento.id : null,
+                    alunoId: f.alunoId,
+                    alunoNome: f.alunoNome || (aluno ? aluno.nome : 'Aluno'),
+                    alunoEmail: aluno ? aluno.email : '',
+                    turmaId: f.turmaId,
+                    turmaNome: f.turmaNome || 'Geral',
+                    titulo: f.titulo,
+                    mesReferencia: f.mesReferencia,
+                    valor: f.valor,
+                    dataVencimento: f.dataVencimento,
+                    status: f.status,
+                    formaPagamento: pagamento ? pagamento.formaPagamento : 'PIX/Boleto',
+                    comprovanteUrl: pagamento ? pagamento.comprovanteUrl : null,
+                    comprovanteNome: pagamento ? pagamento.comprovanteNome : null,
+                    dataConfirmacao: pagamento ? pagamento.dataConfirmacao : null,
+                    validadoPorNome: pagamento ? pagamento.validadoPorNome : null
+                };
+            });
+
+            // Filtro por Status
+            if (filtros.status && filtros.status !== 'TODOS') {
+                lista = lista.filter(t => t.status === filtros.status);
+            }
+
+            // Filtro por Turma
+            if (filtros.turmaId && filtros.turmaId !== 'TODAS') {
+                lista = lista.filter(t => t.turmaId === Number(filtros.turmaId));
+            }
+
+            // Filtro por Busca de Texto (nome ou e-mail do aluno)
+            if (filtros.busca) {
+                const termo = filtros.busca.trim().toLowerCase();
+                lista = lista.filter(t => 
+                    (t.alunoNome && t.alunoNome.toLowerCase().includes(termo)) ||
+                    (t.alunoEmail && t.alunoEmail.toLowerCase().includes(termo)) ||
+                    (t.titulo && t.titulo.toLowerCase().includes(termo))
+                );
+            }
+
+            return lista;
+        },
+
+        /**
+         * Listener Realtime: registra callbacks acionados quando qualquer aba atualiza o estado
+         */
+        onSync: function(callback) {
+            if (typeof callback !== 'function') return;
+
+            // 1. BroadcastChannel (entre abas)
+            if (syncBroadcast) {
+                syncBroadcast.addEventListener('message', (ev) => {
+                    if (ev.data && ev.data.type === 'VIBE_STATE_UPDATED') {
+                        callback(ev.data);
+                    }
+                });
+            }
+
+            // 2. CustomEvent (na própria aba)
+            window.addEventListener('vibedance_sync_event', (ev) => {
+                callback(ev.detail);
+            });
+
+            // 3. Fallback: StorageEvent nativo do navegador
+            window.addEventListener('storage', (ev) => {
+                if (ev.key === STORAGE_KEY) {
+                    callback({ source: 'storage' });
+                }
+            });
         }
     };
 })();

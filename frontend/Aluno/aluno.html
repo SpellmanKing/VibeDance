@@ -158,6 +158,12 @@
                     </a>
                 </li>
                 <li>
+                    <a class="nav-link" id="nav-link-faturas" onclick="trocarAba('faturas', this)">
+                        <i class="fas fa-file-invoice-dollar"></i> Minhas Mensalidades
+                        <span id="badge-faturas-pendentes" class="badge badge-amber" style="margin-left: auto; font-size: 0.72rem; display: none;"></span>
+                    </a>
+                </li>
+                <li>
                     <a class="nav-link" onclick="trocarAba('materiais', this)">
                         <i class="fas fa-headphones"></i> Playlists & Vídeos
                     </a>
@@ -200,7 +206,11 @@
                     <p>Aqui está o seu ritmo semanal e os materiais para praticar.</p>
                 </div>
 
-                <div class="header-actions">
+                <div class="header-actions" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div id="aluno-access-badge-pill" class="studio-status-pill" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);">
+                        <i id="aluno-access-icon" class="fas fa-check-circle" style="color: var(--neon-emerald);"></i>
+                        <span id="aluno-access-badge-text" style="color: var(--neon-emerald); font-weight: 700;">Acesso Autorizado</span>
+                    </div>
                     <div class="studio-status-pill">
                         <span class="live-dot"></span> Estúdio Aberto Hoje
                     </div>
@@ -270,6 +280,9 @@
                 <button class="tab-btn active" onclick="trocarAba('minhas-aulas', this)">
                     <i class="fas fa-calendar-check"></i> Minhas Próximas Aulas
                 </button>
+                <button class="tab-btn" id="tab-btn-faturas" onclick="trocarAba('faturas', this)">
+                    <i class="fas fa-file-invoice-dollar"></i> Minhas Mensalidades
+                </button>
                 <button class="tab-btn" onclick="trocarAba('materiais', this)">
                     <i class="fas fa-music"></i> Playlists & Vídeos
                 </button>
@@ -292,6 +305,37 @@
 
                 <div class="cards-grid" id="container-minhas-turmas">
                     <!-- Preenchido via JavaScript com turmas reais do aluno -->
+                </div>
+            </div>
+
+            <!-- ABA 5: MINHAS MENSALIDADES E FATURAS -->
+            <div id="tab-faturas" class="tab-content-panel">
+                <div class="glass-panel" style="padding: 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; border: 1px solid var(--border-glow);">
+                    <div style="display: flex; align-items: center; gap: 18px;">
+                        <div style="width: 50px; height: 50px; border-radius: 12px; background: var(--grad-primary); display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; box-shadow: var(--glow-purple);">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.18rem; margin-bottom: 4px;">Status de Liberação de Acesso</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.84rem;">O pagamento confirmado libera automaticamente sua presença com badge verde em todas as turmas.</p>
+                        </div>
+                    </div>
+                    <div id="status-acesso-fatura-card">
+                        <span class="badge badge-green" style="font-size: 0.95rem; padding: 10px 18px;">
+                            <i class="fas fa-check-circle"></i> Acesso Autorizado
+                        </span>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <i class="fas fa-file-invoice-dollar" style="color: var(--neon-purple);"></i> Minhas Faturas de Mensalidade
+                    </h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">Pague via Pix instantâneo ou anexe comprovante</span>
+                </div>
+
+                <div class="cards-grid" id="container-faturas-aluno" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+                    <!-- Inserido dinamicamente via aluno.js -->
                 </div>
             </div>
 
@@ -378,6 +422,121 @@
                     </a>
                     <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-player')">Fechar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE PAGAMENTO PIX INSTANTÂNEO -->
+    <div id="modal-pix" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px; color: var(--neon-cyan);">
+                    <i class="fab fa-pix"></i> Pagamento Instantâneo via PIX
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-pix')">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p id="modal-pix-fatura-titulo" style="font-weight: 700; color: #fff; font-size: 1.05rem; margin-bottom: 4px;">Mensalidade VibeDance</p>
+                <p id="modal-pix-valor" style="font-size: 1.5rem; font-weight: 800; color: var(--neon-emerald); font-family: var(--font-heading); margin-bottom: 16px;">R$ 189,90</p>
+                
+                <div style="background: #fff; padding: 16px; border-radius: 12px; display: inline-block; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                    <!-- QR Code Ilustrativo Dinâmico -->
+                    <img id="modal-pix-qrcode" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.90" alt="QR Code PIX" style="display: block; width: 180px; height: 180px;">
+                </div>
+
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">Abra o app do seu banco e aponte a câmera ou use o Copia e Cola:</p>
+
+                <div class="vibe-form-group" style="margin-bottom: 18px;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="modal-pix-copiacola" class="vibe-input" style="font-size: 0.8rem; font-family: monospace;" readonly value="00020126580014br.gov.bcb.pix0136vibedance-financeiro...">
+                        <button class="btn-vibe-secondary" onclick="copiarPixChave()" title="Copiar Chave Pix" style="white-space: nowrap;">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+                </div>
+
+                <div style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 20px; font-size: 0.82rem; color: var(--neon-cyan); text-align: left; display: flex; gap: 10px; align-items: center;">
+                    <i class="fas fa-bolt" style="font-size: 1.2rem;"></i>
+                    <span><strong>Desbloqueio Imediato:</strong> Assim que compensado, sua presença e acesso são autorizados na hora para o professor.</span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button class="btn-vibe-primary" id="btn-simular-pix" onclick="confirmarSimulacaoPix()">
+                        <i class="fas fa-check-circle"></i> Simular Confirmação Bancária Instantânea
+                    </button>
+                    <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-pix')">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE UPLOAD DE COMPROVANTE -->
+    <div id="modal-upload-comprovante" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px; color: var(--neon-purple);">
+                    <i class="fas fa-file-upload"></i> Anexar Comprovante de Pagamento
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-upload-comprovante')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-upload-titulo" style="font-weight: 700; color: #fff; margin-bottom: 4px;">Mensalidade VibeDance</p>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Envie o recibo do Pix, transferência TED ou depósito para conferência do Administrador.</p>
+
+                <form id="form-upload-comprovante" onsubmit="enviarComprovanteSubmit(event)">
+                    <input type="hidden" id="modal-upload-fatura-id">
+
+                    <div style="border: 2px dashed var(--border-glow); border-radius: var(--radius-md); padding: 28px; text-align: center; margin-bottom: 20px; background: rgba(168, 85, 247, 0.04); cursor: pointer;" onclick="document.getElementById('input-arquivo-comprovante').click()">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: var(--neon-purple); margin-bottom: 12px;"></i>
+                        <h4 style="color: #fff; font-size: 1rem; margin-bottom: 6px;" id="label-arquivo-selecionado">Clique para selecionar o comprovante</h4>
+                        <p style="font-size: 0.78rem; color: var(--text-muted);">Suporta JPG, PNG ou PDF (Máx. 5MB)</p>
+                        <input type="file" id="input-arquivo-comprovante" accept="image/*,application/pdf" style="display: none;" onchange="arquivoSelecionadoHandler(this)">
+                    </div>
+
+                    <div class="vibe-form-group">
+                        <label for="comprovante-obs">Observações (Opcional):</label>
+                        <input type="text" id="comprovante-obs" class="vibe-input" placeholder="Ex: Pago via conta bancária de terceiros">
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                        <button type="submit" class="btn-vibe-primary" style="flex: 1;">
+                            <i class="fas fa-paper-plane"></i> Enviar Comprovante para Análise
+                        </button>
+                        <button type="button" class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-upload-comprovante')">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO DE COMPROVANTE -->
+    <div id="modal-ver-comprovante" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 560px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-receipt" style="color: var(--neon-pink);"></i> Comprovante Anexado
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-ver-comprovante')">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <div style="margin-bottom: 16px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-subtle); max-height: 340px;">
+                    <img id="modal-ver-comprovante-img" src="" alt="Comprovante" style="width: 100%; height: auto; display: block; object-fit: cover;">
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 14px; text-align: left; font-size: 0.85rem; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Arquivo:</span>
+                        <strong id="modal-ver-comprovante-nome" style="color: #fff;">comprovante.jpg</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Status da Fatura:</span>
+                        <span id="modal-ver-comprovante-status"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Data de Envio:</span>
+                        <span id="modal-ver-comprovante-data" style="color: var(--text-secondary);">-</span>
+                    </div>
+                </div>
+                <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-ver-comprovante')" style="width: 100%;">Fechar Visualização</button>
             </div>
         </div>
     </div>

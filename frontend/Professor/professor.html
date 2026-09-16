@@ -283,7 +283,8 @@
                                 <tr>
                                     <th>Aluno(a)</th>
                                     <th>E-mail</th>
-                                    <th>Telefone</th>
+                                    <th>Status Financeiro / Acesso</th>
+                                    <th style="text-align: center;">Comprovante</th>
                                     <th style="text-align: center;">Presença na Aula</th>
                                 </tr>
                             </thead>
@@ -356,6 +357,39 @@
             </div>
 
         </main>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO DE COMPROVANTE (PROFESSOR) -->
+    <div id="modal-ver-comprovante-prof" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 560px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-receipt" style="color: var(--neon-pink);"></i> Comprovante do Aluno
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-ver-comprovante-prof')">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <h4 id="modal-prof-aluno-nome" style="color: #fff; margin-bottom: 4px;">Aluno Vibe</h4>
+                <p id="modal-prof-fatura-titulo" style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">Mensalidade da Turma</p>
+
+                <div style="margin-bottom: 16px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-subtle); max-height: 320px;">
+                    <img id="modal-prof-comprovante-img" src="" alt="Comprovante" style="width: 100%; height: auto; display: block; object-fit: cover;">
+                </div>
+
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 14px; text-align: left; font-size: 0.85rem; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Status Financeiro:</span>
+                        <span id="modal-prof-status-badge"></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Data de Envio do Comprovante:</span>
+                        <span id="modal-prof-data-envio" style="color: var(--text-secondary);">-</span>
+                    </div>
+                </div>
+
+                <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-ver-comprovante-prof')" style="width: 100%;">Fechar</button>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->

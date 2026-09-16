@@ -101,6 +101,12 @@
                     </a>
                 </li>
                 <li>
+                    <a class="nav-link" id="nav-link-financeiro" onclick="trocarAbaAdmin('financeiro', this)">
+                        <i class="fas fa-hand-holding-usd"></i> Gestão Financeira
+                        <span id="badge-admin-comprovantes-pendentes" class="badge badge-amber" style="margin-left: auto; font-size: 0.72rem; display: none;"></span>
+                    </a>
+                </li>
+                <li>
                     <a class="nav-link" onclick="trocarAbaAdmin('usuarios', this)">
                         <i class="fas fa-users-cog"></i> Gestão de Usuários
                     </a>
@@ -212,14 +218,17 @@
                 <button class="tab-btn active" onclick="trocarAbaAdmin('dashboard', this)">
                     <i class="fas fa-chart-bar"></i> 1. Visão Geral & Métricas
                 </button>
+                <button class="tab-btn" id="tab-btn-financeiro" onclick="trocarAbaAdmin('financeiro', this)">
+                    <i class="fas fa-hand-holding-usd"></i> 2. Gestão Financeira & Comprovantes
+                </button>
                 <button class="tab-btn" onclick="trocarAbaAdmin('usuarios', this)">
-                    <i class="fas fa-users"></i> 2. CRUD de Usuários (Alunos e Professores)
+                    <i class="fas fa-users"></i> 3. CRUD de Usuários (Alunos e Professores)
                 </button>
                 <button class="tab-btn" onclick="trocarAbaAdmin('turmas-salas', this)">
-                    <i class="fas fa-clock"></i> 3. Horários & Alocação de Salas
+                    <i class="fas fa-clock"></i> 4. Horários & Alocação de Salas
                 </button>
                 <button class="tab-btn" onclick="trocarAbaAdmin('modalidades', this)">
-                    <i class="fas fa-drum"></i> 4. Modalidades de Dança
+                    <i class="fas fa-drum"></i> 5. Modalidades de Dança
                 </button>
             </div>
 
@@ -440,6 +449,133 @@
                 </div>
             </div>
 
+            <!-- ABA 5: GESTÃO FINANCEIRA, KPIS, VALIDAÇÃO DE COMPROVANTES E AUDITORIA -->
+            <div id="tab-financeiro" class="tab-content-panel">
+                
+                <!-- DASHBOARD FINANCEIRO EM TEMPO REAL: KPIS CONSOLIDADOS -->
+                <section class="stats-grid" style="margin-bottom: 28px;">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-title">Receita Total Confirmada</span>
+                            <div class="stat-icon-wrapper stat-icon-purple">
+                                <i class="fas fa-hand-holding-usd"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="kpi-fin-receita" style="color: var(--neon-emerald);">R$ 0,00</div>
+                        <div class="stat-footer">
+                            <span class="trend-up"><i class="fas fa-check-circle"></i> Valores liquidados</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-title">Pagamentos Pendentes</span>
+                            <div class="stat-icon-wrapper stat-icon-cyan">
+                                <i class="fas fa-hourglass-half"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="kpi-fin-pendente" style="color: var(--neon-cyan);">R$ 0,00</div>
+                        <div class="stat-footer">
+                            <span id="kpi-fin-comprovantes-count" style="color: var(--neon-amber); font-weight: 700;">0 comprovante(s) em análise</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-title">Taxa de Inadimplência</span>
+                            <div class="stat-icon-wrapper stat-icon-pink">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="kpi-fin-inadimplencia" style="color: #ef4444;">0%</div>
+                        <div class="stat-footer">
+                            <span id="kpi-fin-inadimplente-valor" style="color: var(--text-muted);">R$ 0,00 em atraso</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="stat-title">Projeção Mensal</span>
+                            <div class="stat-icon-wrapper stat-icon-amber">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value" id="kpi-fin-projecao">R$ 0,00</div>
+                        <div class="stat-footer">
+                            <span>Receita realizada + a receber</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- FILA PRIORITÁRIA DE COMPROVANTES AGUARDANDO VALIDAÇÃO -->
+                <div class="table-card" style="margin-bottom: 32px; border: 1px solid rgba(245, 158, 11, 0.35);">
+                    <div class="table-toolbar" style="border-bottom: 1px solid rgba(245, 158, 11, 0.2);">
+                        <div>
+                            <h3 style="color: #fff; font-size: 1.18rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-inbox" style="color: var(--neon-amber);"></i> Fila de Comprovantes Pendentes de Aprovação
+                            </h3>
+                            <p style="font-size: 0.82rem; color: var(--text-muted);">Comprovantes anexados pelos alunos aguardando validação para liberação imediata de acesso às aulas</p>
+                        </div>
+                        <span id="badge-total-fila-comprovantes" class="badge badge-amber" style="font-size: 0.85rem; padding: 6px 14px;">
+                            0 pendente(s)
+                        </span>
+                    </div>
+
+                    <div id="container-fila-comprovantes" style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">
+                        <!-- Preenchido dinamicamente via admin.js -->
+                    </div>
+                </div>
+
+                <!-- TABELA ANALÍTICA DE TRANSAÇÕES FINANCEIRAS -->
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <div class="search-box-wrapper">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="filtro-busca-transacoes" placeholder="Buscar por aluno ou fatura..." oninput="filtrarTabelaTransacoes()">
+                        </div>
+
+                        <div class="filter-pills">
+                            <button class="filter-pill active" onclick="filtrarStatusTransacao('TODOS', this)">Todos</button>
+                            <button class="filter-pill" onclick="filtrarStatusTransacao('CONFIRMADO', this)">Confirmados</button>
+                            <button class="filter-pill" onclick="filtrarStatusTransacao('EM_ANALISE', this)">Em Análise</button>
+                            <button class="filter-pill" onclick="filtrarStatusTransacao('PENDENTE', this)">Pendentes</button>
+                            <button class="filter-pill" onclick="filtrarStatusTransacao('VENCIDO', this)">Vencidos</button>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <select id="filtro-turma-transacoes" class="vibe-select" style="height: 38px; font-size: 0.84rem;" onchange="filtrarTabelaTransacoes()">
+                                <option value="TODAS">Todas as Turmas</option>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                            <button class="btn-vibe-secondary" onclick="abrirModalAuditoria()" style="white-space: nowrap; height: 38px; font-size: 0.84rem;">
+                                <i class="fas fa-shield-alt"></i> Trilha de Auditoria
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x: auto;">
+                        <table class="vibe-table">
+                            <thead>
+                                <tr>
+                                    <th>Fatura / Título</th>
+                                    <th>Aluno(a)</th>
+                                    <th>Turma</th>
+                                    <th>Valor</th>
+                                    <th>Vencimento</th>
+                                    <th>Status</th>
+                                    <th>Comprovante</th>
+                                    <th style="text-align: right;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-transacoes-corpo">
+                                <!-- Inserido dinamicamente via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
         </main>
     </div>
 
@@ -497,6 +633,132 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE VISUALIZAÇÃO E APROVAÇÃO DE COMPROVANTE (ADMIN) -->
+    <div id="modal-admin-ver-comprovante" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-search-dollar" style="color: var(--neon-amber);"></i> Validação de Comprovante de Pagamento
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-admin-ver-comprovante')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.86rem;">
+                        <div>
+                            <span style="color: var(--text-muted); display: block;">Aluno(a):</span>
+                            <strong id="modal-admin-comp-aluno" style="color: #fff; font-size: 0.95rem;">Juliana Paiva</strong>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); display: block;">Valor da Mensalidade:</span>
+                            <strong id="modal-admin-comp-valor" style="color: var(--neon-emerald); font-size: 1.1rem; font-family: var(--font-heading);">R$ 189,90</strong>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); display: block;">Turma Vinculada:</span>
+                            <span id="modal-admin-comp-turma" style="color: var(--neon-cyan); font-weight: 600;">Hip Hop Mastercrew</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted); display: block;">Data de Envio:</span>
+                            <span id="modal-admin-comp-data" style="color: var(--text-secondary);">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-subtle); max-height: 380px; text-align: center; background: #000;">
+                    <img id="modal-admin-comp-img" src="" alt="Comprovante Anexo" style="width: 100%; height: auto; display: block; object-fit: contain; max-height: 380px;">
+                </div>
+
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-admin-ver-comprovante')">Fechar</button>
+                    <button class="btn-vibe-secondary" style="border-color: rgba(239, 68, 68, 0.4); color: #ef4444;" id="btn-admin-rejeitar-comp" onclick="abrirModalRejeitarAdmin()">
+                        <i class="fas fa-times"></i> Rejeitar
+                    </button>
+                    <button class="btn-vibe-primary" id="btn-admin-aprovar-comp" onclick="confirmarAprovacaoAdmin()">
+                        <i class="fas fa-check-circle"></i> Aprovar Pagamento & Liberar Acesso
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE REJEIÇÃO DE COMPROVANTE (ADMIN) -->
+    <div id="modal-admin-rejeitar" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 style="color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-ban"></i> Justificativa de Recusa
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-admin-rejeitar')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.86rem; color: var(--text-secondary); margin-bottom: 16px;">
+                    Informe o motivo da recusa do comprovante. O aluno será notificado para anexar um novo documento legível.
+                </p>
+
+                <div class="vibe-form-group">
+                    <label for="admin-rejeicao-motivo">Motivo da Rejeição:</label>
+                    <select id="admin-rejeicao-motivo" class="vibe-select" onchange="motivoPredefinidoHandler(this)">
+                        <option value="Comprovante ilegível ou cortado">Comprovante ilegível ou cortado</option>
+                        <option value="Valor transferido divergente da fatura">Valor transferido divergente da fatura</option>
+                        <option value="Data do comprovante anterior ao vencimento">Data do comprovante divergente</option>
+                        <option value="Comprovante de agendamento não efetivado">Comprovante de agendamento não efetivado</option>
+                        <option value="OUTRO">Outro motivo personalizado...</option>
+                    </select>
+                </div>
+
+                <div class="vibe-form-group" id="group-outro-motivo" style="display: none;">
+                    <label for="admin-rejeicao-texto">Detalhes:</label>
+                    <textarea id="admin-rejeicao-texto" class="vibe-textarea" rows="3" placeholder="Explique o motivo para o aluno..."></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                    <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-admin-rejeitar')">Cancelar</button>
+                    <button class="btn-vibe-primary" style="background: #ef4444; border-color: #ef4444;" onclick="confirmarRejeicaoAdmin()">
+                        Confirmar Rejeição
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE TRILHA DE AUDITORIA (RBAC & SECURITY) -->
+    <div id="modal-admin-auditoria" class="modal-backdrop">
+        <div class="modal-card" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-shield-alt" style="color: var(--neon-cyan);"></i> Trilha de Auditoria & Conformidade RBAC
+                </h3>
+                <button class="modal-close-btn" onclick="VibeUI.closeModal('modal-admin-auditoria')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 16px;">
+                    Registro imutável de todas as transações, uploads de comprovantes e aprovações manuais com operador e timestamp.
+                </p>
+
+                <div style="overflow-x: auto; max-height: 400px;">
+                    <table class="vibe-table">
+                        <thead>
+                            <tr>
+                                <th>Data / Hora</th>
+                                <th>Operador</th>
+                                <th>Ação</th>
+                                <th>Transição</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-auditoria-corpo">
+                            <!-- Inserido dinamicamente via admin.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn-vibe-secondary" onclick="VibeUI.closeModal('modal-admin-auditoria')">Fechar</button>
+                </div>
             </div>
         </div>
     </div>
