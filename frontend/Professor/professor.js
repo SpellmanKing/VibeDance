@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function inicializarPainelProfessor() {
+async function inicializarPainelProfessor() {
     const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
     if (!user) return;
 
@@ -33,8 +33,8 @@ function inicializarPainelProfessor() {
     }
 
     renderizarAgendaProfessor(user);
-    popularSelectsTurma(user);
-    carregarListaChamada();
+    await popularSelectsTurma(user);
+    await carregarListaChamada();
     renderizarMuralComunicados(user);
 
     // Sincronização em tempo real: reflete aprovações do admin ou pagamentos do aluno instantaneamente
@@ -135,119 +135,187 @@ window.abrirChamadaTurma = abrirChamadaTurma;
 /**
  * Preenche os selects com as turmas do professor
  */
-function popularSelectsTurma(user) {
-    const todasTurmas = window.VibeStore.getTurmas();
-    const turmas = todasTurmas.filter(t => t.professorId === user.id || user.perfil === 'ADMINISTRADOR');
-
+async function popularSelectsTurma(user) {
     const selectChamada = document.getElementById('select-turma-chamada');
     const selectComunicado = document.getElementById('comunicado-turma-select');
 
-    const optionsHtml = turmas.map(t => `<option value="${t.id}">${t.nome} (${t.dias})</option>`).join('');
+    const token = sessionStorage.getItem('vibedance_token');
 
-    if (selectChamada) selectChamada.innerHTML = optionsHtml;
-    if (selectComunicado) selectComunicado.innerHTML = optionsHtml;
+    if (!token) {
+        window.VibeUI.showToast('Faça login novamente para carregar suas turmas.', 'error');
+        return;
+    }
+
+    try {
+        const resposta = await fetch('/api/professor/presencas/turmas', {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!resposta.ok) {
+            throw new Error(await resposta.text());
+        }
+
+        const turmas = await resposta.json();
+
+        const optionsHtml = turmas.map(t =>
+            `<option value="${t.id}">${t.nomeTurma} (${t.diasSemana})</option>`
+        ).join('');
+
+        if (selectChamada) {
+            selectChamada.innerHTML = optionsHtml;
+        }
+
+        // O comunicado ainda utiliza as turmas do armazenamento local.
+        if (selectComunicado) {
+            const turmasLocais = window.VibeStore.getTurmas()
+                .filter(t => t.professorId === user.id || user.perfil === 'ADMINISTRADOR');
+
+            selectComunicado.innerHTML = turmasLocais.map(t =>
+                `<option value="${t.id}">${t.nome} (${t.dias})</option>`
+            ).join('');
+        }
+
+    } catch (erro) {
+        console.error('Erro ao carregar turmas:', erro);
+        window.VibeUI.showToast('Não foi possível carregar suas turmas.', 'error');
+    }
 }
 
 /**
  * Carrega a lista de alunos da turma selecionada para a Chamada Virtual
  */
-function carregarListaChamada() {
+async function carregarListaChamada() {
     const selectTurma = document.getElementById('select-turma-chamada');
     const inputData = document.getElementById('input-data-chamada');
     const tbody = document.getElementById('tabela-alunos-chamada');
     const tituloTurma = document.getElementById('titulo-chamada-turma');
 
-    if (!selectTurma || !tbody) return;
+    if (!selectTurma || !tbody || !selectTurma.value) return;
 
     const turmaId = Number(selectTurma.value);
     const data = inputData ? inputData.value : new Date().toISOString().split('T')[0];
+    const token = sessionStorage.getItem('vibedance_token');
 
-    const turma = window.VibeStore.getTurmas().find(t => t.id === turmaId);
-    if (turma && tituloTurma) {
-        tituloTurma.textContent = `Lista de Presença: ${turma.nome}`;
-    }
-
-    const alunos = window.VibeStore.getAlunosDaTurma(turmaId);
-    const presencasGravadas = window.VibeStore.getPresencas(turmaId, data);
-
-    tbody.innerHTML = '';
-    chamadaEstadoAtual = [];
-
-    if (alunos.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                    Nenhum aluno matriculado nesta turma ainda.
-                </td>
-            </tr>
-        `;
-        atualizarTaxaPresenca();
+    if (!token) {
+        window.VibeUI.showToast('Faça login novamente.', 'error');
         return;
     }
 
-    alunos.forEach(aluno => {
-        // Verifica se já havia registro de presença salvo
-        const gravado = presencasGravadas.find(p => p.alunoId === aluno.id);
-        const presente = gravado ? gravado.presente : true; // Por padrão, presente
+    if (tituloTurma) {
+        tituloTurma.textContent = `Lista de Presença: ${selectTurma.selectedOptions[0].textContent}`;
+    }
 
-        chamadaEstadoAtual.push({ alunoId: aluno.id, presente: presente });
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5" style="text-align:center; padding:30px;">
+                Carregando alunos...
+            </td>
+        </tr>
+    `;
 
-        // Consulta de status financeiro e liberação de acesso (Regra de Negócio RBAC)
-        const acessoInfo = window.VibeStore.getStatusAcessoAluno(aluno.id, turmaId);
+    try {
+        const resposta = await fetch(
+            `/api/professor/presencas/${turmaId}?data=${encodeURIComponent(data)}`,
+            {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            }
+        );
 
-        let badgeAcessoHtml = '';
-        if (acessoInfo.status === 'AUTORIZADO') {
-            badgeAcessoHtml = `<span class="badge badge-green" title="Pagamento confirmado"><i class="fas fa-check-circle"></i> Acesso Autorizado</span>`;
-        } else if (acessoInfo.status === 'EM_ANALISE') {
-            badgeAcessoHtml = `<span class="badge badge-amber" title="Comprovante anexado aguardando ADM"><i class="fas fa-hourglass-half"></i> Em Análise</span>`;
-        } else if (acessoInfo.status === 'BLOQUEADO') {
-            badgeAcessoHtml = `<span class="badge badge-red" title="Mensalidade vencida sem quitação"><i class="fas fa-ban"></i> Acesso Bloqueado</span>`;
-        } else {
-            badgeAcessoHtml = `<span class="badge badge-cyan" title="Dentro do prazo de vencimento"><i class="fas fa-clock"></i> Tolerância</span>`;
+        if (!resposta.ok) {
+            throw new Error(await resposta.text());
         }
 
-        let comprovanteHtml = `<span style="color: var(--text-dim); font-size: 0.8rem;">-</span>`;
-        if (acessoInfo.pagamento && acessoInfo.pagamento.comprovanteUrl) {
-            comprovanteHtml = `
-                <button class="btn-vibe-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="abrirModalComprovanteProf(${aluno.id}, ${turmaId})">
-                    <i class="fas fa-receipt"></i> Ver Comprovante
-                </button>
+        const alunos = await resposta.json();
+
+        tbody.innerHTML = '';
+        chamadaEstadoAtual = [];
+
+        if (alunos.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align:center; color:var(--text-muted); padding:30px;">
+                        Nenhum aluno matriculado nesta turma.
+                    </td>
+                </tr>
             `;
+            atualizarTaxaPresenca();
+            return;
         }
 
-        const tr = document.createElement('tr');
-        tr.id = `row-aluno-${aluno.id}`;
+        alunos.forEach(aluno => {
+            const presente = aluno.presente;
 
-        const initials = aluno.nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            chamadaEstadoAtual.push({
+                alunoId: aluno.id,
+                presente: presente
+            });
 
-        tr.innerHTML = `
-            <td>
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div class="user-avatar-circle" style="width: 34px; height: 34px; font-size: 0.8rem;">${initials}</div>
-                    <div>
-                        <strong style="color: #fff;">${aluno.nome}</strong>
-                        ${!acessoInfo.autorizado && acessoInfo.status === 'BLOQUEADO' ? '<div style="font-size: 0.72rem; color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Inadimplente</div>' : ''}
+            const initials = aluno.nome
+                .split(' ')
+                .map(n => n[0])
+                .slice(0, 2)
+                .join('')
+                .toUpperCase();
+
+            const tr = document.createElement('tr');
+            tr.id = `row-aluno-${aluno.id}`;
+
+            tr.innerHTML = `
+                <td>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="user-avatar-circle" style="width:34px; height:34px; font-size:0.8rem;">
+                            ${initials}
+                        </div>
+                        <div>
+                            <strong style="color:#fff;">${aluno.nome}</strong>
+                        </div>
                     </div>
-                </div>
-            </td>
-            <td>${aluno.email}</td>
-            <td>${badgeAcessoHtml}</td>
-            <td style="text-align: center;">${comprovanteHtml}</td>
-            <td style="text-align: center;">
-                <div class="attendance-toggle-group">
-                    <button type="button" class="attendance-chip btn-presente ${presente ? 'active' : ''}" onclick="togglePresenca(${aluno.id}, true)">
-                        <i class="fas fa-check"></i> Presente
-                    </button>
-                    <button type="button" class="attendance-chip btn-ausente ${!presente ? 'active' : ''}" onclick="togglePresenca(${aluno.id}, false)">
-                        <i class="fas fa-times"></i> Ausente
-                    </button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+                </td>
+                <td>${aluno.email}</td>
+                <td>
+                    <span style="color:var(--text-dim); font-size:0.8rem;">—</span>
+                </td>
+                <td style="text-align:center;">
+                    <span style="color:var(--text-dim); font-size:0.8rem;">—</span>
+                </td>
+                <td style="text-align:center;">
+                    <div class="attendance-toggle-group">
+                        <button type="button"
+                            class="attendance-chip btn-presente ${presente === true ? 'active' : ''}"
+                            onclick="togglePresenca(${aluno.id}, true)">
+                            <i class="fas fa-check"></i> Presente
+                        </button>
+                        <button type="button"
+                            class="attendance-chip btn-ausente ${presente === false ? 'active' : ''}"
+                            onclick="togglePresenca(${aluno.id}, false)">
+                            <i class="fas fa-times"></i> Ausente
+                        </button>
+                    </div>
+                </td>
+            `;
 
-    atualizarTaxaPresenca();
+            tbody.appendChild(tr);
+        });
+
+        atualizarTaxaPresenca();
+
+    } catch (erro) {
+        console.error('Erro ao carregar chamada:', erro);
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center; padding:30px; color:#ef4444;">
+                    Não foi possível carregar os alunos.
+                </td>
+            </tr>
+        `;
+
+        window.VibeUI.showToast('Erro ao carregar chamada.', 'error');
+    }
 }
 window.carregarListaChamada = carregarListaChamada;
 
@@ -346,22 +414,75 @@ function atualizarTaxaPresenca() {
 }
 
 /**
- * Salva a Chamada Virtual no LocalStorage / State
+ * Salva a Chamada Virtual no banco de dados
  */
-function salvarChamadaVirtual() {
+async function salvarChamadaVirtual() {
     const selectTurma = document.getElementById('select-turma-chamada');
     const inputData = document.getElementById('input-data-chamada');
 
-    if (!selectTurma || chamadaEstadoAtual.length === 0) {
+    if (!selectTurma || !selectTurma.value || chamadaEstadoAtual.length === 0) {
         window.VibeUI.showToast('Nenhum aluno para registrar chamada.', 'error');
         return;
     }
 
     const turmaId = Number(selectTurma.value);
-    const data = inputData.value;
+    const data = inputData ? inputData.value : null;
+    const token = sessionStorage.getItem('vibedance_token');
 
-    window.VibeStore.salvarPresencaBatch(turmaId, data, chamadaEstadoAtual);
-    window.VibeUI.showToast(`Chamada virtual salva com sucesso para ${data}!`, 'success');
+    if (!data) {
+        window.VibeUI.showToast('Selecione a data da chamada.', 'error');
+        return;
+    }
+
+    if (!token) {
+        window.VibeUI.showToast('Faça login novamente.', 'error');
+        return;
+    }
+
+    const chamadaIncompleta = chamadaEstadoAtual.some(
+        aluno => typeof aluno.presente !== 'boolean'
+    );
+
+    if (chamadaIncompleta) {
+        window.VibeUI.showToast(
+            'Marque todos os alunos como presentes ou ausentes.',
+            'warning'
+        );
+        return;
+    }
+
+    try {
+        const resposta = await fetch(`/api/professor/presencas/${turmaId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                data: data,
+                alunos: chamadaEstadoAtual
+            })
+        });
+
+        if (!resposta.ok) {
+            const erro = await resposta.text();
+            throw new Error(erro);
+        }
+
+        window.VibeUI.showToast(
+            `Chamada registrada com sucesso para ${data}!`,
+            'success'
+        );
+
+        await carregarListaChamada();
+
+    } catch (erro) {
+        console.error('Erro ao salvar chamada:', erro);
+        window.VibeUI.showToast(
+            'Não foi possível salvar a chamada: ' + erro.message,
+            'error'
+        );
+    }
 }
 window.salvarChamadaVirtual = salvarChamadaVirtual;
 

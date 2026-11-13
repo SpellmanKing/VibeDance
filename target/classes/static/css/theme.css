@@ -1,0 +1,162 @@
+/* ==========================================================================
+   VibeDance Design System - Theme Tokens & Variables
+   Estética "The Vibe": Dark Obsidian Canvas, Electric Neon, Audio Waves & Motion
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
+
+:root {
+    /* Superfícies e Fundos (Dark Canvas com profundidade) */
+    --bg-base: #0a0612;
+    --bg-surface: #120c22;
+    --bg-card: rgba(26, 17, 48, 0.7);
+    --bg-card-hover: rgba(36, 24, 68, 0.85);
+    --bg-glass: rgba(18, 12, 34, 0.65);
+    --bg-glass-heavy: rgba(14, 8, 26, 0.85);
+    --bg-input: rgba(15, 10, 28, 0.85);
+
+    /* Cores de Acento & Neon Vibrante */
+    --neon-purple: #a855f7;
+    --neon-pink: #ec4899;
+    --neon-cyan: #06b6d4;
+    --neon-amber: #f59e0b;
+    --neon-emerald: #10b981;
+    --neon-blue: #3b82f6;
+
+    /* Gradientes Dinâmicos de Dança e Som */
+    --grad-primary: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+    --grad-cyan: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    --grad-sunset: linear-gradient(135deg, #ec4899 0%, #f59e0b 100%);
+    --grad-emerald: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+    --grad-dark-card: linear-gradient(160deg, rgba(32, 20, 58, 0.65) 0%, rgba(16, 10, 30, 0.85) 100%);
+    --grad-border: linear-gradient(135deg, rgba(168, 85, 247, 0.4) 0%, rgba(236, 72, 153, 0.1) 100%);
+
+    /* Bordas & Brilhos Neon */
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(168, 85, 247, 0.35);
+    --border-glow-pink: rgba(236, 72, 153, 0.35);
+    --border-glow-cyan: rgba(6, 182, 212, 0.35);
+    --glow-purple: 0 0 25px rgba(168, 85, 247, 0.35);
+    --glow-pink: 0 0 25px rgba(236, 72, 153, 0.35);
+    --glow-cyan: 0 0 25px rgba(6, 182, 212, 0.35);
+
+    /* Textos & Legibilidade */
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+
+    /* Tipografia */
+    --font-heading: 'Outfit', sans-serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+
+    /* Espaçamento e Bordas */
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-full: 9999px;
+
+    /* Transições */
+    --transition-fast: 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-spring: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ==========================================================================
+   Base Reset e Tipografia Fluida
+   ========================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: var(--font-body);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar com brilho neon */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-base);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.3);
+    border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-purple);
+}
+
+/* ==========================================================================
+   Animações de Som e Ritmo (Soundwave Equalizer)
+   ========================================================================== */
+@keyframes soundwave-dance {
+    0%, 100% {
+        height: 6px;
+        opacity: 0.5;
+    }
+    50% {
+        height: 28px;
+        opacity: 1;
+    }
+}
+
+.soundwave-visualizer {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 32px;
+    padding: 0 4px;
+}
+
+.soundwave-bar {
+    width: 3.5px;
+    border-radius: 3px;
+    background: var(--grad-primary);
+    animation: soundwave-dance 1.2s ease-in-out infinite;
+}
+
+.soundwave-bar:nth-child(1) { animation-duration: 0.8s; animation-delay: 0.1s; }
+.soundwave-bar:nth-child(2) { animation-duration: 1.1s; animation-delay: 0.3s; }
+.soundwave-bar:nth-child(3) { animation-duration: 0.7s; animation-delay: 0.2s; height: 18px; }
+.soundwave-bar:nth-child(4) { animation-duration: 1.3s; animation-delay: 0.4s; }
+.soundwave-bar:nth-child(5) { animation-duration: 0.9s; animation-delay: 0.15s; }
+
+/* Efeito de Pulsar Neon */
+@keyframes neon-pulse {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(236, 72, 153, 0.7), 0 0 50px rgba(168, 85, 247, 0.3);
+    }
+}
+
+.pulse-neon {
+    animation: neon-pulse 3s infinite;
+}
+
+/* Efeito de Vidro Fosco (Glassmorphism) */
+.glass-panel {
+    background: var(--bg-card);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    transition: all var(--transition-normal);
+}
+
+.glass-panel:hover {
+    border-color: var(--border-glow);
+}

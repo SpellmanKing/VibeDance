@@ -45,16 +45,31 @@ const VibeAuth = (function() {
 
             // Tenta consultar API Spring Boot caso esteja ativa
             try {
-                const response = await fetch('http://localhost:8080/api/auth/login', {
+                const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, senha })
                 });
                 if (response.ok) {
                     const data = await response.json();
+
+                    const userSession = {
+                        id: data.id,
+                        nome: data.nome,
+                        email: data.email,
+                        perfil: data.perfil
+                    };
+
                     sessionStorage.setItem(TOKEN_KEY, data.token);
-                    sessionStorage.setItem(USER_KEY, JSON.stringify({ email, perfil: data.perfil }));
-                    return { success: true, perfil: data.perfil, redirectUrl: this.getDashboardUrl(data.perfil) };
+                    sessionStorage.setItem(USER_KEY, JSON.stringify(userSession));
+                    localStorage.removeItem(USER_KEY);
+                    
+                    return { 
+                        success: true, 
+                        perfil: data.perfil, 
+                        user: userSession,
+                        redirectUrl: this.getDashboardUrl(data.perfil) 
+                    };
                 }
             } catch (err) {
                 // Backend Spring Boot offline ou sem CORS, fallback transparente para VibeStore
