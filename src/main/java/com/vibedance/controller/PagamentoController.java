@@ -9,13 +9,16 @@ import com.vibedance.service.PagamentoService;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.ResponseEntity;import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ContentDisposition;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/aluno/pagamentos")
@@ -86,6 +89,38 @@ public class PagamentoController {
                 .toList();
 
         return ResponseEntity.ok(pagamentos);
+    }
+
+    @GetMapping("/{id}/recibo")
+    public ResponseEntity<byte[]> baixarRecibo(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal Usuario usuario) {
+
+        try {
+            byte[] pdf = pagamentoService.gerarRecibo(
+                    id, usuario.getId()
+            );
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(
+                            HttpHeaders.CONTENT_DISPOSITION,
+                            ContentDisposition.attachment()
+                                    .filename(
+                                            "recibo-pagamento-" + id + ".pdf",
+                                            StandardCharsets.UTF_8
+                                    )
+                                    .build()
+                                    .toString()
+                    )
+                    .body(pdf);
+
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).build();
+        }
     }
 
     @PostMapping("/online")

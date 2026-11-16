@@ -3,6 +3,9 @@
  * Gerenciador de aulas, playlists interativas, histórico de frequência e matrículas
  */
 
+let statusAnterioresAulasParticulares = null;
+let intervaloAulasParticulares = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     inicializarPainelAluno();
 });
@@ -27,9 +30,21 @@ function inicializarPainelAluno() {
     renderizarMinhasAulas(user.id);
     renderizarFaturasAluno(user.id);
     renderizarMateriais();
+    renderizarComunicadosAluno();
     renderizarHistorico(user.id);
     renderizarTodasTurmas(user.id);
+    renderizarModalidades();
 
+    verificarAtualizacoesAulasParticulares();
+
+    if (intervaloAulasParticulares) {
+        clearInterval(intervaloAulasParticulares);
+    }
+
+    intervaloAulasParticulares = setInterval(
+        verificarAtualizacoesAulasParticulares,
+        30000
+    );
 }
 
 /**
@@ -140,7 +155,7 @@ async function solicitarAulaParticular() {
         botao.disabled = false;
         botao.textContent = textoOriginal;
     }
-}   
+}
 
 async function carregarAulasParticulares() {
     const container = document.getElementById('container-aulas-particulares');
@@ -200,19 +215,83 @@ async function carregarAulasParticulares() {
             });
         }
 
-        //Preenche os professores ativos
+        // Preenche os professores conforme a modalidade escolhida
         const selectProfessor = document.getElementById('particular-professor');
 
-        if (selectProfessor) {
+        if (selectProfessor && selectModalidade) {
+
+            selectProfessor.disabled = true;
             selectProfessor.replaceChildren(
-                new Option('Selecione um professor', '')
+                new Option('Selecione uma modalidade primeiro', '')
             );
 
-            professores.forEach(professor => {
-                selectProfessor.add(
-                    new Option(professor.nome, professor.id)
+            selectModalidade.onchange = async () => {
+
+                const idModalidade = selectModalidade.value;
+
+                selectProfessor.disabled = true;
+                selectProfessor.replaceChildren(
+                    new Option('Carregando professores...', '')
                 );
-            });
+
+                if (!idModalidade) {
+                    selectProfessor.replaceChildren(
+                        new Option('Selecione uma modalidade primeiro', '')
+                    );
+                    return;
+                }
+
+                try {
+                    const respostaTurmas = await fetch(
+                        `/api/turmas/modalidade/${idModalidade}`
+                    );
+
+                    if (!respostaTurmas.ok) {
+                        throw new Error('Erro ao consultar turmas.');
+                    }
+
+                    const turmas = await respostaTurmas.json();
+
+                    const idsProfessores = new Set(
+                        turmas
+                            .filter(turma =>
+                                turma.ativo === true &&
+                                turma.professorId != null
+                            )
+                            .map(turma => Number(turma.professorId))
+                    );
+
+                    const professoresDisponiveis = professores.filter(
+                        professor =>
+                            idsProfessores.has(Number(professor.id))
+                    );
+
+                    selectProfessor.replaceChildren(
+                        new Option(
+                            professoresDisponiveis.length > 0
+                                ? 'Selecione um professor'
+                                : 'Nenhum professor disponível',
+                            ''
+                        )
+                    );
+
+                    professoresDisponiveis.forEach(professor => {
+                        selectProfessor.add(
+                            new Option(professor.nome, professor.id)
+                        );
+                    });
+
+                    selectProfessor.disabled =
+                        professoresDisponiveis.length === 0;
+
+                } catch (erro) {
+                    console.error('Erro ao carregar professores:', erro);
+
+                    selectProfessor.replaceChildren(
+                        new Option('Erro ao carregar professores', '')
+                    );
+                }
+            };
         }
 
         container.innerHTML = '';
@@ -305,13 +384,60 @@ async function carregarAulasParticulares() {
                     ? 'A definir.'
                     : (professor?.nome || 'professor não encontrado.');
 
-            
+
             container.appendChild(card);
         });
 
     } catch (erro) {
         console.error('Erro nas aulas particulares:', erro);
         container.textContent = 'Não foi possível carregar os agendamentos.';
+    }
+}
+
+async function verificarAtualizacoesAulasParticulares() {
+    const token = sessionStorage.getItem('vibedance_token');
+
+    if (!token) return;
+
+    try {
+        const resposta = await fetch('/api/aluno/aulas-particulares', {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!resposta.ok) return;
+
+        const aulas = await resposta.json();
+
+        const novosStatus = new Map(
+            aulas.map(aula => [aula.id, aula.status])
+        );
+
+        if (statusAnterioresAulasParticulares === null) {
+            statusAnterioresAulasParticulares = novosStatus;
+            return;
+        }
+
+        aulas.forEach(aula => {
+            const statusAnterior =
+                statusAnterioresAulasParticulares.get(aula.id);
+
+            if (
+                statusAnterior === 'SOLICITADO' &&
+                aula.status === 'CONFIRMADO'
+            ) {
+                window.VibeUI.showToast(
+                    `Sua aula particular #${aula.id} foi confirmada!`,
+                    'success'
+                );
+            }
+        });
+
+        statusAnterioresAulasParticulares = novosStatus;
+
+    } catch (erro) {
+        console.error('Erro ao verificar confirmações:', erro);
     }
 }
 
@@ -368,8 +494,8 @@ async function renderizarMinhasAulas(alunoId) {
                     })[String(t.nivel || '').trim().toUpperCase()] || t.nivel || 'Geral',
                     horario: (t.horario || '').slice(0, 5) + ' - ' +
                              (t.horarioFim || '').slice(0, 5),
-                    professorNome: professores.find(p => Number(p.id) === Number(t.professorId))?.nome || 'Nao informado',
-                    salaNome: t.salaId ? 'Sala ' + t.salaId : 'Nao informada'
+                    professorNome: t.professorNome || 'Nao informado',
+                    salaNome: t.salaNome || 'Nao informada'
                 }
             })
             .filter(Boolean);
@@ -384,6 +510,8 @@ async function renderizarMinhasAulas(alunoId) {
     // Atualiza contador nas métricas
     const countEl = document.getElementById('stat-turmas-matriculadas');
     if (countEl) countEl.textContent = turmas.length;
+
+    atualizarProximaAulaAluno(turmas);
 
     if (!container) return;
     container.innerHTML = '';
@@ -452,6 +580,98 @@ async function renderizarMinhasAulas(alunoId) {
         `;
         container.appendChild(card);
     });
+}
+
+function atualizarProximaAulaAluno(turmas) {
+    const elementoAula = document.getElementById('stat-aluno-proxima-aula');
+    const elementoDetalhe = document.getElementById('stat-aluno-proxima-aula-detalhe');
+
+    if (!elementoAula || !elementoDetalhe) return;
+
+    const agora = new Date();
+    let proximaAula = null;
+
+    const diasSemana = [
+        ['DOMINGO', 0],
+        ['SEGUNDA', 1],
+        ['TERCA', 2],
+        ['QUARTA', 3],
+        ['QUINTA', 4],
+        ['SEXTA', 5],
+        ['SABADO', 6]
+    ];
+
+    turmas.forEach(turma => {
+        const diasTexto = String(turma.dias || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toUpperCase();
+
+        const horarioTexto = String(turma.horario || '').split('-')[0].trim();
+        const partesHorario = horarioTexto.split(':');
+
+        if (partesHorario.length < 2) return;
+
+        const hora = Number(partesHorario[0]);
+        const minuto = Number(partesHorario[1]);
+
+        if (
+            !Number.isInteger(hora) ||
+            !Number.isInteger(minuto) ||
+            hora < 0 || hora > 23 ||
+            minuto < 0 || minuto > 59
+        ) return;
+
+        diasSemana.forEach(([nomeDia, numeroDia]) => {
+            if (!diasTexto.includes(nomeDia)) return;
+
+            for (let i = 0; i <= 7; i++) {
+                const dataAula = new Date(agora);
+                dataAula.setDate(agora.getDate() + i);
+                dataAula.setHours(hora, minuto, 0, 0);
+
+                if (dataAula.getDay() !== numeroDia) continue;
+                if (dataAula <= agora) continue;
+
+                if (!proximaAula || dataAula < proximaAula.data) {
+                    proximaAula = {
+                        data: dataAula,
+                        turma: turma
+                    };
+                }
+
+                break;
+            }
+        });
+    });
+
+    if (!proximaAula) {
+        elementoAula.textContent = 'Sem próxima aula';
+        elementoDetalhe.textContent = 'Nenhuma aula futura encontrada.';
+        return;
+    }
+
+    const data = proximaAula.data;
+    const horario = data.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const hoje = data.toDateString() === agora.toDateString();
+
+    const diaFormatado = hoje
+        ? 'Hoje'
+        : data.toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: '2-digit',
+            month: '2-digit'
+        });
+
+    elementoAula.textContent = `${diaFormatado}, ${horario}`;
+
+    const turma = proximaAula.turma;
+    elementoDetalhe.textContent =
+        `${turma.salaNome} • Prof. ${String(turma.professorNome || 'Não informado').replace(/^Prof\.\s*/i, '')}`;
 }
 
 function confirmarPresenca(turmaId) {
@@ -637,6 +857,99 @@ async function renderizarMateriais() {
     }
 }
 
+/**
+ * Renderiza os comunicados das turmas em que o aluno está matriculado
+ */
+async function renderizarComunicadosAluno() {
+    const container = document.getElementById('container-comunicados-aluno');
+    if (!container) return;
+
+    const token = sessionStorage.getItem('vibedance_token');
+
+    if (!token) {
+        container.textContent = 'Faça login novamente para visualizar os comunicados.';
+        return;
+    }
+
+    container.textContent = 'Carregando comunicados...';
+
+    try {
+        const resposta = await fetch('/api/aluno/comunicados', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!resposta.ok) {
+            throw new Error('Falha ao buscar comunicados.');
+        }
+
+        const comunicados = await resposta.json();
+        container.innerHTML = '';
+
+        if (!comunicados.length) {
+            container.textContent = 'Nenhum comunicado disponível para suas turmas.';
+            return;
+        }
+
+        comunicados.forEach(comunicado => {
+            const card = document.createElement('div');
+            card.className = 'vibe-card';
+
+            const topo = document.createElement('div');
+            topo.className = 'card-body';
+
+            const titulo = document.createElement('h4');
+            titulo.className = 'card-title';
+            titulo.textContent = comunicado.titulo;
+
+            const mensagem = document.createElement('p');
+            mensagem.className = 'card-desc';
+            mensagem.textContent = comunicado.conteudo;
+
+            const professor = document.createElement('p');
+            professor.className = 'card-meta';
+            professor.textContent = `Professor: ${comunicado.professorNome || 'Não informado'}`;
+
+            const data = document.createElement('p');
+            data.className = 'card-meta';
+            data.textContent = comunicado.data
+                ? new Date(comunicado.data).toLocaleString('pt-BR')
+                : '';
+
+            topo.appendChild(titulo);
+
+            if (comunicado.urgente) {
+                const destaque = document.createElement('span');
+                destaque.className = 'card-badge badge-pink';
+                destaque.textContent = 'Destaque / Importante';
+                topo.appendChild(destaque);
+            }
+
+            topo.appendChild(mensagem);
+            topo.appendChild(professor);
+            topo.appendChild(data);
+
+            if (comunicado.link) {
+                const link = document.createElement('a');
+                link.href = comunicado.link;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.className = 'btn-vibe-primary';
+                link.textContent = 'Acessar anexo / playlist';
+                topo.appendChild(link);
+            }
+
+            card.appendChild(topo);
+            container.appendChild(card);
+        });
+
+    } catch (erro) {
+        console.error('Erro ao carregar comunicados:', erro);
+        container.textContent = 'Não foi possível carregar os comunicados.';
+    }
+}
+
 function abrirPlayerModal(titulo, desc, url) {
     document.getElementById('modal-player-titulo').textContent = titulo;
     document.getElementById('modal-player-desc').textContent = desc;
@@ -712,6 +1025,7 @@ async function renderizarHistorico(alunoId) {
         const elementoPercentual = document.getElementById('frequencia-percentual');
         const elementoBarra = document.getElementById('frequencia-barra');
         const elementoDescricao = document.getElementById('frequencia-descricao');
+        const elementoStatus = document.getElementById('frequencia-status');
 
         if (elementoPercentual) {
             elementoPercentual.textContent = percentual + '%';
@@ -723,7 +1037,20 @@ async function renderizarHistorico(alunoId) {
 
         if (elementoDescricao) {
             elementoDescricao.textContent =
-                `${totalPresencas} presenças em ${totalAulas} aulas registradas`;
+                `${totalPresencas} ${totalPresencas === 1 ? 'presença' : 'presenças'} em ${totalAulas} ${totalAulas === 1 ? 'aula registrada' : 'aulas registradas'}`;
+        }
+
+        if (elementoStatus) {
+            if (totalAulas === 0) {
+                elementoStatus.className = 'badge';
+                elementoStatus.innerHTML = 'Aguardando registros';
+            } else if (percentual >= 75) {
+                elementoStatus.className = 'badge badge-green';
+                elementoStatus.innerHTML = '<i class="fas fa-check"></i> Frequência regular';
+            } else {
+                elementoStatus.className = 'badge badge-pink';
+                elementoStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Atenção à frequência';
+            }
         }
 
         tbody.innerHTML = '';
@@ -809,14 +1136,16 @@ async function renderizarTodasTurmas(alunoId) {
             .map(t => ({
                 id: t.id,
                 nome: t.nomeTurma,
+                categoria: t.modalidade?.categoria || '',
+                horarioInicio: (t.horario || '').slice(0, 5),
                 nivel: ({
                     INICIANTE: 'Iniciante',
                     INTERMEDIARIO: 'Intermediário',
                     AVANCADO: 'Avançado',
                     TODOS_OS_NIVEIS: 'Todos os níveis'
                 })[String(t.nivel || '').trim().toUpperCase()] || t.nivel || 'Geral',
-                professorNome: t.professorId ? 'ID ' + t.professorId : 'Nao informado',
-                salaNome: t.salaId ? 'Sala ' + t.salaId : 'Nao informada',
+                professorNome: t.professorNome || 'Nao informado',
+                salaNome: t.salaNome || 'Nao informada',
                 dias: t.diasSemana,
                 horario: (t.horario || '').slice(0, 5) + ' - ' +
                          (t.horarioFim || '').slice(0, 5),
@@ -838,57 +1167,173 @@ async function renderizarTodasTurmas(alunoId) {
         return;
     }
 
-    container.innerHTML = '';
+    const filtroCategoria = document.getElementById('filtro-categoria-turma');
+    const filtroHorario = document.getElementById('filtro-horario-turma');
 
-    turmas.forEach(t => {
-        const jaMatriculado = minhasTurmasIds.includes(t.id);
-        const matriculaCancelada = turmasCanceladasIds.includes(t.id);
-        const vagasRestantes = Math.max(0, (t.vagas || 25) - (t.ocupadas || 0));
-        const lotada = vagasRestantes <= 0;
+    function aplicarFiltrosTurmas() {
+        container.innerHTML = '';
 
-        const card = document.createElement('div');
-        card.className = 'vibe-card';
+        const categoriaSelecionada = filtroCategoria.value;
+        const horarioSelecionado = filtroHorario.value;
 
-        let botaoAcao = '';
-        if (jaMatriculado) {
-            botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.8;"><i class="fas fa-check-circle" style="color: var(--neon-emerald);"></i> Já Matriculado</button>`;
-        }  else if (matriculaCancelada) {
-            botaoAcao = `<button class= "btn-vibe-secondary" disabled style="width: 100%; opacity: 0.8;"><i class="fas fa-ban"></i> Matricula Cancelada</button>`;
-        } else if (lotada) {
-            botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.5;"><i class="fas fa-ban"></i> Turma Lotada</button>`;
-        } else {
-            botaoAcao = `<button class="btn-vibe-primary" style="width: 100%;" onclick="realizarMatricula(${alunoId}, ${t.id})"><i class="fas fa-plus"></i> Matricular-se Agora</button>`;
+        const turmasFiltradas = turmas.filter(t => {
+            if (categoriaSelecionada && t.categoria !== categoriaSelecionada) {
+                return false;
+            }
+
+            if (horarioSelecionado) {
+                const hora = Number(t.horarioInicio.split(':')[0]);
+
+                if (horarioSelecionado === 'manha' && hora >= 11) {
+                    return false;
+                }
+
+                if (horarioSelecionado === 'tarde' && (hora < 11 || hora >= 18)) {
+                    return false;
+                }
+
+                if (horarioSelecionado === 'noite' && hora < 18) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        if (turmasFiltradas.length === 0) {
+            container.textContent = 'Nenhuma turma encontrada com esses filtros.';
+            return;
         }
 
-        card.innerHTML = `
-            <div class="card-top-banner">
-                <i class="fas fa-music banner-bg-icon"></i>
-                <span class="card-badge badge-purple">${t.nivel || 'Geral'}</span>
-            </div>
-            <div class="card-body">
-                <h4 class="card-title">${t.nome}</h4>
-                <p class="card-desc">Instrutor: <strong>${t.professorNome}</strong> • Sala: ${t.salaNome || 'Studio A'}</p>
+        turmasFiltradas.forEach(t => {
+            const jaMatriculado = minhasTurmasIds.includes(t.id);
+            const matriculaCancelada = turmasCanceladasIds.includes(t.id);
+            const semLimiteVagas = t.vagas == null || t.vagas <= 0;
+            const vagasRestantes = semLimiteVagas
+                ? 0
+                : Math.max(0, t.vagas - (t.ocupadas || 0));
+            const lotada = vagasRestantes <= 0;
 
-                <div class="card-meta-list">
-                    <div class="meta-item">
-                        <i class="fas fa-calendar-alt"></i>
-                        <span>Dias: <strong>${t.dias}</strong></span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-clock"></i>
-                        <span>Horário: <strong>${t.horario}</strong></span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-users"></i>
-                        <span>Vagas: <strong>${vagasRestantes} disponíveis</strong> (${t.ocupadas}/${t.vagas})</span>
-                    </div>
+            const card = document.createElement('div');
+            card.className = 'vibe-card';
+
+            let botaoAcao = '';
+
+            if (jaMatriculado) {
+                botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.8;"><i class="fas fa-check-circle" style="color: var(--neon-emerald);"></i> Já Matriculado</button>`;
+            } else if (matriculaCancelada) {
+                botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.8;"><i class="fas fa-ban"></i> Matricula Cancelada</button>`;
+            } else if (lotada) {
+                botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.5;"><i class="fas fa-ban"></i> ${semLimiteVagas ? 'Vagas não configuradas' : 'Turma Lotada'}</button>`;
+            } else {
+                botaoAcao = `<button class="btn-vibe-primary" style="width: 100%;" onclick="realizarMatricula(${alunoId}, ${t.id})"><i class="fas fa-plus"></i> Matricular-se Agora</button>`;
+            }
+
+            card.innerHTML = `
+                <div class="card-top-banner">
+                    <i class="fas fa-music banner-bg-icon"></i>
+                    <span class="card-badge badge-purple">${t.nivel || 'Geral'}</span>
                 </div>
+                <div class="card-body">
+                    <h4 class="card-title">${t.nome}</h4>
+                    <p class="card-desc">Instrutor: <strong>${t.professorNome}</strong> • Sala: ${t.salaNome || 'Studio A'}</p>
 
-                ${botaoAcao}
-            </div>
-        `;
-        container.appendChild(card);
-    });
+                    <div class="card-meta-list">
+                        <div class="meta-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span>Dias: <strong>${t.dias}</strong></span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-clock"></i>
+                            <span>Horário: <strong>${t.horario}</strong></span>
+                        </div>
+                        <div class="meta-item">
+                            <i class="fas fa-users"></i>
+                            <span>Vagas: <strong>${semLimiteVagas ? 'Não configuradas' : vagasRestantes + ' disponíveis'}</strong> (${t.ocupadas || 0}/${semLimiteVagas ? '—' : t.vagas})</span>
+                        </div>
+                    </div>
+
+                    ${botaoAcao}
+                </div>
+            `;
+
+            container.appendChild(card);
+        });
+    }
+
+    filtroCategoria.addEventListener('change', aplicarFiltrosTurmas);
+    filtroHorario.addEventListener('change', aplicarFiltrosTurmas);
+
+    aplicarFiltrosTurmas();
+}
+
+async function renderizarModalidades() {
+    const container = document.getElementById('container-modalidades');
+
+    if (!container) return;
+
+    container.textContent = 'Carregando modalidades...';
+
+    try {
+        const resposta = await fetch('/api/modalidades');
+
+        if (!resposta.ok) {
+            throw new Error('Erro ao carregar modalidades.');
+        }
+
+        const modalidades = await resposta.json();
+
+        container.replaceChildren();
+
+        if (modalidades.length === 0) {
+            container.textContent = 'Nenhuma modalidade disponível.';
+            return;
+        }
+
+        modalidades.forEach(modalidade => {
+            const card = document.createElement('div');
+            card.className = 'vibe-card';
+
+            const banner = document.createElement('div');
+            banner.className = 'card-top-banner';
+
+            if (modalidade.imagemUrl) {
+                const imagem = document.createElement('img');
+                imagem.src = modalidade.imagemUrl;
+                imagem.alt = modalidade.nome;
+                imagem.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+
+                banner.appendChild(imagem);
+            } else {
+                const icone = document.createElement('i');
+                icone.className = `fas ${modalidade.icone || 'fa-music'} banner-bg-icon`;
+                banner.appendChild(icone);
+            }
+
+            const corpo = document.createElement('div');
+            corpo.className = 'card-body';
+
+            const categoria = document.createElement('span');
+            categoria.className = 'card-badge badge-purple';
+            categoria.textContent = modalidade.categoria || 'Dança';
+
+            const nome = document.createElement('h4');
+            nome.className = 'card-title';
+            nome.textContent = modalidade.nome;
+
+            const descricao = document.createElement('p');
+            descricao.className = 'card-desc';
+            descricao.textContent = modalidade.descricao || 'Descrição não disponível.';
+
+            corpo.append(categoria, nome, descricao);
+            card.append(banner, corpo);
+            container.appendChild(card);
+        });
+
+    } catch (erro) {
+        console.error('Erro ao carregar modalidades:', erro);
+        container.textContent = 'Não foi possível carregar as modalidades.';
+    }
 }
 
 async function realizarMatricula(alunoId, turmaId) {
@@ -1010,8 +1455,6 @@ function atualizarStatusAcessoTopo(faturas) {
         }
     }
 
-    atualizarStatusAcessoTopo(faturas);
-
     if (cardStatus) {
         cardStatus.innerHTML = `
             <span class="badge ${statusInfo.badgeClass}" style="font-size: 0.95rem; padding: 10px 18px;">
@@ -1051,6 +1494,9 @@ async function renderizarFaturasAluno(alunoId) {
 
         const faturas = await respostaFaturas.json();
         const pagamentos = await respostaPagamentos.json();
+
+        atualizarStatusAcessoTopo(faturas);
+        renderizarHistoricoPagamentos(pagamentos, faturas);
 
         container.innerHTML = '';
 
@@ -1122,7 +1568,7 @@ async function renderizarFaturasAluno(alunoId) {
             } else if (fatura.status === 'EM_ANALISE') {
                 badgeStatus = '<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>';
                 botoesAcao = '<p style="margin-top: 16px; color: var(--text-muted); text-align: center;">Pagamento aguardando análise.</p>';
-            
+
             } else if (fatura.status === 'VENCIDO') {
                 badgeStatus = '<span class="badge badge-red"><i class="fas fa-exclamation-triangle"></i> Vencido</span>';
                 botoesAcao = `
@@ -1210,6 +1656,146 @@ async function renderizarFaturasAluno(alunoId) {
 
 window.renderizarFaturasAluno = renderizarFaturasAluno;
 
+function renderizarHistoricoPagamentos(pagamentos, faturas) {
+    const container = document.getElementById('container-historico-pagamentos');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!pagamentos || pagamentos.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; padding: 30px; text-align: center; background: var(--bg-card); border-radius: var(--radius-md);">
+                <i class="fas fa-history" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 12px;"></i>
+                <p style="color: var(--text-muted);">Nenhum pagamento registrado até o momento.</p>
+            </div>
+        `;
+        return;
+    }
+
+    pagamentos.forEach(pagamento => {
+        const fatura = faturas.find(f =>
+            String(f.id) === String(pagamento.idFatura)
+        );
+
+        const status = (pagamento.status || '').toUpperCase();
+
+        let badgeStatus;
+
+        if (status === 'CONFIRMADO') {
+            badgeStatus = '<span class="badge badge-green"><i class="fas fa-check-circle"></i> Pago</span>';
+        } else if (status === 'EM_ANALISE') {
+            badgeStatus = '<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em análise</span>';
+        } else if (status === 'PENDENTE') {
+            badgeStatus = '<span class="badge badge-cyan"><i class="fas fa-clock"></i> Pendente</span>';
+        } else {
+            badgeStatus = '<span class="badge badge-red">Não confirmado</span>';
+        }
+
+        const valor = Number(pagamento.valorPago || 0).toLocaleString(
+            'pt-BR',
+            { style: 'currency', currency: 'BRL' }
+        );
+
+        const dataOriginal = pagamento.dataConfirmacao || pagamento.criadoEm;
+        const data = dataOriginal
+            ? dataOriginal.substring(0, 10).split('-').reverse().join('/')
+            : 'Não informada';
+
+        const card = document.createElement('div');
+        card.className = 'class-card';
+
+        const titulo = document.createElement('h3');
+        titulo.style.cssText = 'color: #fff; font-size: 1.05rem; margin-bottom: 10px;';
+        titulo.textContent = fatura?.titulo || `Pagamento da fatura #${pagamento.idFatura}`;
+
+        const detalhes = document.createElement('div');
+        detalhes.style.cssText = 'display: flex; flex-direction: column; gap: 9px;';
+
+        const valorTexto = document.createElement('p');
+        valorTexto.style.color = 'var(--neon-cyan)';
+        valorTexto.textContent = `Valor: ${valor}`;
+
+        const formaTexto = document.createElement('p');
+        formaTexto.style.color = 'var(--text-secondary)';
+        formaTexto.textContent = `Forma de pagamento: ${pagamento.formaPagamento || 'Não informada'}`;
+
+        const dataTexto = document.createElement('p');
+        dataTexto.style.color = 'var(--text-secondary)';
+        dataTexto.textContent = `Data: ${data}`;
+
+        detalhes.append(valorTexto, formaTexto, dataTexto);
+
+        const topo = document.createElement('div');
+        topo.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px;';
+        topo.appendChild(titulo);
+
+        const statusElemento = document.createElement('div');
+        statusElemento.innerHTML = badgeStatus;
+        topo.appendChild(statusElemento);
+
+        card.append(topo, detalhes);
+        if (status === 'CONFIRMADO') {
+            const botaoRecibo = document.createElement('button');
+            botaoRecibo.className = 'btn-vibe-secondary';
+            botaoRecibo.style.cssText = 'width: 100%; margin-top: 16px;';
+            botaoRecibo.innerHTML = '<i class="fas fa-file-pdf"></i> Baixar recibo PDF';
+
+            botaoRecibo.addEventListener('click', () => {
+                baixarReciboPagamento(pagamento.id);
+            });
+
+            card.appendChild(botaoRecibo);
+        }
+
+        container.appendChild(card);
+    });
+}
+
+async function baixarReciboPagamento(idPagamento) {
+    const token = sessionStorage.getItem('vibedance_token');
+
+    if (!token) {
+        alert('Faça login novamente.');
+        return;
+    }
+
+    try {
+        const resposta = await fetch(
+            `/api/aluno/pagamentos/${idPagamento}/recibo`,
+            {
+                headers: {
+                    Authorization: 'Bearer ' + token
+                }
+            }
+        );
+
+        if (!resposta.ok) {
+            if (resposta.status === 409) {
+                throw new Error(
+                    'O recibo só está disponível para pagamentos confirmados.'
+                );
+            }
+
+            throw new Error('Não foi possível baixar o recibo.');
+        }
+
+        const blob = await resposta.blob();
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `recibo-pagamento-${idPagamento}.pdf`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        URL.revokeObjectURL(url);
+
+    } catch (erro) {
+        alert(erro.message);
+    }
+}
 
 let paymentBrickController = null;
 
@@ -1262,11 +1848,10 @@ async function inicializarPaymentBrick(fatura, token) {
 
         locale: 'pt-BR',
 
-        customization: {
-            paymentMethods: {
-                creditCard: 'all',
-                bankTransfer: 'pix'
-            }
+        paymentMethods: {
+            creditCard: 'all',
+            bankTransfer: 'pix',
+            ticket: 'all'
         },
 
         callbacks: {
@@ -1346,9 +1931,15 @@ async function inicializarPaymentBrick(fatura, token) {
                         'resultado-pagamento-mensagem'
                     );
 
+                    const linkBoleto = document.getElementById(
+                        'resultado-boleto-link'
+                    );
+
                     imagem.style.display = 'none';
                     areaCopia.style.display = 'none';
                     campoCopia.value = '';
+                    linkBoleto.style.display = 'none';
+                    linkBoleto.href = '#';
 
                     if (metodo === 'pix') {
                         titulo.textContent = 'PIX gerado';
@@ -1366,6 +1957,15 @@ async function inicializarPaymentBrick(fatura, token) {
 
                         mensagem.textContent =
                             'Escaneie o QR Code ou copie o código PIX para realizar o pagamento.';
+                    } else if (pagamento.ticketUrl) {
+                        titulo.textContent = 'Boleto gerado';
+
+                        linkBoleto.href = pagamento.ticketUrl;
+                        linkBoleto.style.display = 'inline-block';
+
+                        mensagem.textContent =
+                            'Clique no botão abaixo para abrir e realizar o pagamento do boleto.';
+
                     } else {
                         titulo.textContent = 'Pagamento enviado';
 
@@ -1502,18 +2102,18 @@ async function abrirModalUploadComprovante(faturaId) {
         }
 
         const fatura = await resposta.json();
-    
+
         document.getElementById('modal-upload-fatura-id').value = fatura.id;
-        document.getElementById('modal-upload-titulo').textContent = 
-            `${fatura.titulo} - ${Number(fatura.valor).toLocaleString('pt-BR', { 
+        document.getElementById('modal-upload-titulo').textContent =
+            `${fatura.titulo} - ${Number(fatura.valor).toLocaleString('pt-BR', {
                 style: 'currency',
-                currency: 'BRL' 
+                currency: 'BRL'
             })}`;
         document.getElementById('label-arquivo-selecionado').textContent =
             'Clique para selecionar o comprovante';
         document.getElementById('input-arquivo-comprovante').value = '';
         document.getElementById('comprovante-obs').value = '';
-        
+
         window.VibeUI.openModal('modal-upload-comprovante');
 
     } catch (erro) {

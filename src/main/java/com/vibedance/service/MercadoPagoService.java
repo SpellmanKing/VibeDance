@@ -48,6 +48,26 @@ public class MercadoPagoService {
         }
     }
 
+    // Consulta os dados de um pagamento pelo ID no Mercado Pago.
+    public Map<String, Object> buscarPagamento(String id) {
+        validarCredencial();
+
+        try {
+            return restClient.get()
+                    .uri("/v1/payments/{id}", id)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+        } catch (RestClientResponseException e) {
+            throw new IllegalStateException(
+                    "Erro ao consultar pagamento no Mercado Pago. Código: "
+                            + e.getStatusCode(),
+                    e
+            );
+        }
+    }
+
     public Map<String, Object> criarPagamento(
             Map<String, Object> dados,
             String chaveIdempotencia) {

@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
-    UserDetails findByEmail(String email);
+    Usuario findByEmail(String email);
 
     List<Usuario> findByPerfilAndAtivoTrueOrderByNomeAsc(String perfil);
 }

@@ -36,7 +36,7 @@
         #tab-particulares input[type="datetime-local"] {
             color-scheme: dark;
         }
-        
+
         /* Estilos dedicados ao Painel do Aluno */
         .progress-ring-container {
             display: flex;
@@ -209,7 +209,7 @@
 
         .status-cancelado {
             background: rgba(236, 72, 153, 0.14);
-            color: var(--neon-blue);
+            color: var(--neon-pink);
             border-color: rgba(236, 72, 153, 0.35);
         }
 
@@ -334,7 +334,7 @@
 
         <!-- CONTEÚDO PRINCIPAL -->
         <main class="vibe-main-content">
-            
+
             <!-- TOPO DE BOAS-VINDAS -->
             <header class="top-header">
                 <div class="welcome-box">
@@ -406,9 +406,14 @@
                             <i class="fas fa-music"></i>
                         </div>
                     </div>
-                    <div class="stat-value" style="font-size: 1.3rem; margin-top: 5px;">Quarta, 19h</div>
+                    <div class="stat-value" id="stat-aluno-proxima-aula"
+                        style="font-size: 1.3rem; margin-top: 5px;">
+                        Calculando...
+                    </div>
                     <div class="stat-footer">
-                        <span>Studio Beat B • Prof. Diego</span>
+                        <span id="stat-aluno-proxima-aula-detalhe">
+                            Buscando sua próxima aula...
+                        </span>
                     </div>
                 </div>
             </section>
@@ -478,6 +483,20 @@
                 <div class="cards-grid" id="container-faturas-aluno" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
                     <!-- Inserido dinamicamente via aluno.js -->
                 </div>
+                <div class="section-header" style="margin-top: 36px;">
+                    <h2 class="section-title">
+                        <i class="fas fa-history" style="color: var(--neon-purple);"></i>
+                        Histórico de Pagamentos
+                    </h2>
+                    <span style="font-size: 0.85rem; color: var(--text-muted);">
+                        Todas as suas transações
+                    </span>
+                </div>
+
+                <div class="cards-grid" id="container-historico-pagamentos"
+                     style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+                    <!-- Preenchido pelo aluno.js -->
+                </div>
             </div>
 
             <!-- ABA 2: MATERIAIS DE APOIO (PLAYLISTS E VÍDEOS) -->
@@ -491,6 +510,16 @@
                 <div class="cards-grid" id="container-materiais-aluno">
                     <!-- Preenchido dinamicamente via JS -->
                 </div>
+                <div class="section-header" style="margin-top: 30px;">
+                    <h2 class="section-title">
+                        <i class="fas fa-bullhorn" style="color: var(--neon-pink);"></i>
+                        Comunicados dos Professores
+                    </h2>
+                </div>
+
+                <div class="cards-grid" id="container-comunicados-aluno">
+                    <!-- Preenchido dinamicamente via JS -->
+                </div>
             </div>
 
             <!-- ABA 3: HISTÓRICO DE FREQUÊNCIA -->
@@ -501,7 +530,9 @@
                             <h3 style="font-size: 1.15rem; color: #fff;">Registro de Frequência Recente</h3>
                             <p style="font-size: 0.82rem; color: var(--text-muted);">Presenças confirmadas pelo professor na chamada virtual</p>
                         </div>
-                        <span class="badge badge-green"><i class="fas fa-check"></i> Frequência Regular</span>
+                        <span class="badge badge-green" id="frequencia-status">
+                            <i class="fas fa-check"></i> Sem faltas
+                        </span>
                     </div>
 
                     <div style="overflow-x: auto;">
@@ -532,10 +563,51 @@
                     <span style="font-size: 0.85rem; color: var(--text-muted);">Clique para matricular-se imediatamente</span>
                 </div>
 
-                <div class="cards-grid" id="container-todas-turmas">
-                    <!-- Preenchido via JS -->
-                </div>
-            </div>
+                <div class="glass-panel" style="padding: 20px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div>
+                            <label for="filtro-categoria-turma">Tipo de dança</label>
+                            <select id="filtro-categoria-turma" class="vibe-select">
+                                <option value="">Todas as modalidades</option>
+                                <option value="Urbanas">Urbanas</option>
+                                <option value="Clássicas">Clássicas</option>
+                                <option value="Ritmos">Ritmos</option>
+                            </select>
+                            </div>
+                            <div>
+                                <label for="filtro-horario-turma">Horário de início</label>
+                                <select id="filtro-horario-turma" class="vibe-select">
+                                    <option value="">Todos os horários</option>
+                                    <option value="manha">Manhã (até 11h)</option>
+                                    <option value="tarde">Tarde (11h às 18h)</option>
+                                    <option value="noite">Noite (a partir das 18h)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-header" style="margin-top: 30px;">
+                        <h3 class="section-title">
+                            <i class="fas fa-music" style="color: var(--neon-cyan);"></i>
+                            Modalidades de Dança
+                        </h3>
+                    </div>
+
+                    <div class="cards-grid" id="container-modalidades">
+                        <!-- Preenchido via JS -->
+                    </div>
+
+                    <div class="section-header" style="margin-top: 30px;">
+                      <h3 class="section-title">
+                          <i class="fas fa-calendar-alt"></i>
+                          Turmas Disponíveis
+                      </h3>
+                  </div>
+
+                  <div class="cards-grid" id="container-todas-turmas">
+                      <!-- Preenchido via JS -->
+                  </div>
+              </div>
 
             <!-- ABA 5: AULAS PARTICULARES -->
             <div id="tab-particulares" class="tab-content-panel">
@@ -563,13 +635,13 @@
                         </select>
 
                         <label for="particular-datahora">Data e horário</label>
-                        <input type="datetime-local" 
-                               id="particular-datahora" 
+                        <input type="datetime-local"
+                               id="particular-datahora"
                                class="vibe-input"
                                required>
 
                         <label for="particular-duracao">Duração em minutos</label>
-                        <input type="number" 
+                        <input type="number"
                                id="particular-duracao"
                                class="vibe-input"
                                value="60" min="30" max="180">
@@ -626,7 +698,7 @@
         </div>
     </div>
 
-    
+
     <!-- MODAL DE PAGAMENTO ONLINE -->
     <div id="modal-pix" class="modal-backdrop">
         <div class="modal-card" style="max-width: 620px;">
@@ -780,6 +852,6 @@
     <script src="../js/auth.js"></script>
     <script src="../js/auth-guard.js"></script>
     <script src="https://sdk.mercadopago.com/js/v2"></script>
-    <script src="aluno.js?v=2"></script>
+    <script src="aluno.js?v=3"></script>
 </body>
 </html>

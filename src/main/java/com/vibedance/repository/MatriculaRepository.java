@@ -22,4 +22,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     
     long countByIdTurmaAndStatus(Integer idTurma, String status);
     
+    List<Matricula> findByIdTurmaInAndStatus(
+        List<Integer> idsTurmas, String status
+    );
 }

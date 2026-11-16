@@ -1,8 +1,13 @@
 package com.vibedance.controller;
 
 import com.vibedance.model.Turma;
+import com.vibedance.model.Usuario;
+import com.vibedance.model.Sala;
 import com.vibedance.repository.TurmaRepository;
 import com.vibedance.repository.MatriculaRepository;
+import com.vibedance.repository.UsuarioRepository;
+import com.vibedance.repository.SalaRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,15 +16,21 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/turmas")
-@CrossOrigin(origins = "*") // Permite requisições do frontend
+@CrossOrigin(origins = "*")
 public class TurmaController {
 
     @Autowired
     private TurmaRepository repository;
 
-    @Autowired MatriculaRepository matriculaRepository;
+    @Autowired
+    private MatriculaRepository matriculaRepository;
 
-    // Rota para listar todas as turmas (US14)
+    @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private SalaRepository salaRepository;
+
     @GetMapping
     public ResponseEntity<List<Turma>> listarTodas() {
 
@@ -27,31 +38,33 @@ public class TurmaController {
 
         for (Turma turma : turmas) {
             atualizarVagasOcupadas(turma);
+            preencherNomes(turma);
         }
 
         return ResponseEntity.ok(turmas);
     }
 
-    // Rota para cadastrar uma nova turma (US14)
     @PostMapping
     public ResponseEntity<Turma> cadastrarTurma(@RequestBody Turma turma) {
-        // Ao criar uma turma nova, garantimos que ela comece com 0 vagas ocupadas
+
         turma.setVagasOcupadas(0);
 
         Turma salva = repository.save(turma);
 
+        preencherNomes(salva);
+
         return ResponseEntity.ok(salva);
     }
 
-    // Rota extra para listar turmas de uma modalidade específica (US03)
     @GetMapping("/modalidade/{modalidadeId}")
     public ResponseEntity<List<Turma>> listarPorModalidade(
             @PathVariable Integer modalidadeId) {
-                
+
         List<Turma> turmas = repository.findByModalidadeId(modalidadeId);
 
         for (Turma turma : turmas) {
             atualizarVagasOcupadas(turma);
+            preencherNomes(turma);
         }
 
         return ResponseEntity.ok(turmas);
@@ -64,5 +77,20 @@ public class TurmaController {
         );
 
         turma.setVagasOcupadas(Math.toIntExact(ocupadas));
+    }
+
+    private void preencherNomes(Turma turma) {
+
+        if (turma.getProfessorId() != null) {
+            usuarioRepository.findById(turma.getProfessorId())
+                    .ifPresent(usuario ->
+                            turma.setProfessorNome(usuario.getNome()));
+        }
+
+        if (turma.getSalaId() != null) {
+            salaRepository.findById(turma.getSalaId())
+                    .ifPresent(sala ->
+                            turma.setSalaNome(sala.getNome()));
+        }
     }
 }

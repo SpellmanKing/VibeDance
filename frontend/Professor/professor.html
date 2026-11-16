@@ -178,7 +178,7 @@
                     </div>
                     <div class="stat-value" id="stat-prof-alunos">44</div>
                     <div class="stat-footer">
-                        <span class="trend-up"><i class="fas fa-arrow-up"></i> +5</span> novos alunos
+                        <span>Alunos com matrícula ativa</span>
                     </div>
                 </div>
 
@@ -189,7 +189,7 @@
                             <i class="fas fa-percentage"></i>
                         </div>
                     </div>
-                    <div class="stat-value">94.8%</div>
+                    <div class="stat-value" id="stat-prof-presenca">0%</div>
                     <div class="stat-footer">
                         <span class="trend-up">Alta assiduidade</span>
                     </div>
@@ -203,8 +203,12 @@
                         </div>
                     </div>
                     <div class="stat-value" style="font-size: 1.25rem; margin-top: 5px;" id="stat-prof-proxima">19:00</div>
+                    <div id="stat-prof-proxima-data"
+                        style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 5px;">
+                        Carregando data...
+                    </div>
                     <div class="stat-footer">
-                        <span>Studio Beat B • Urban</span>
+                        <span id="stat-prof-proxima-detalhe">Carregando...</span>
                     </div>
                 </div>
             </section>
@@ -231,8 +235,48 @@
                     <span style="font-size: 0.85rem; color: var(--text-muted);">Clique em "Iniciar Chamada" para abrir a lista da turma</span>
                 </div>
 
-                <div class="cards-grid" id="container-agenda-professor">
-                    <!-- Gerado dinamicamente via professor.js -->
+                <div class="agenda-controles">
+                    <div class="agenda-navegacao">
+                        <button type="button" onclick="navegarAgendaProfessor(-1)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+
+                        <strong id="agenda-periodo">Carregando agenda...</strong>
+
+                        <button type="button" onclick="navegarAgendaProfessor(1)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="agenda-filtros">
+                        <input
+                            type="date"
+                            id="agenda-data"
+                            onchange="alterarDataAgendaProfessor(this.value)"
+                        >
+
+                        <button
+                            type="button"
+                            id="btn-agenda-semana"
+                            class="btn-vibe-primary"
+                            onclick="alterarModoAgendaProfessor('semana')"
+                        >
+                            Semana
+                        </button>
+
+                        <button
+                            type="button"
+                            id="btn-agenda-dia"
+                            class="btn-vibe-primary"
+                            onclick="alterarModoAgendaProfessor('dia')"
+                        >
+                            Dia
+                        </button>
+                    </div>
+                </div>
+
+                <div id="container-agenda-professor" class="agenda-calendario">
+                    <!-- Calendário gerado pelo professor.js -->
                 </div>
             </div>
 
@@ -272,9 +316,15 @@
                             <p style="font-size: 0.82rem; color: var(--text-muted);">Alterne entre 'Presente' ou 'Falta' com 1 clique</p>
                         </div>
 
-                        <button class="btn-vibe-primary" onclick="salvarChamadaVirtual()">
-                            <i class="fas fa-save"></i> Salvar Chamada Virtual
-                        </button>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button class="btn-vibe-primary" onclick="exportarListaAlunos()">
+                                <i class="fas fa-file-csv"></i> Exportar Lista
+                            </button>
+
+                            <button class="btn-vibe-primary" onclick="salvarChamadaVirtual()">
+                                <i class="fas fa-save"></i> Salvar Chamada Virtual
+                            </button>
+                        </div>
                     </div>
 
                     <div style="overflow-x: auto;">
@@ -283,6 +333,8 @@
                                 <tr>
                                     <th>Aluno(a)</th>
                                     <th>E-mail</th>
+                                    <th>Telefone</th>
+                                    <th>Data da Matrícula</th>
                                     <th>Status Financeiro / Acesso</th>
                                     <th style="text-align: center;">Comprovante</th>
                                     <th style="text-align: center;">Presença na Aula</th>

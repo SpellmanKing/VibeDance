@@ -33,15 +33,17 @@ public class PagamentoService {
     private final AuditoriaPagamentoService auditoriaService;
     private final MercadoPagoService mercadoPagoService;
     private final PagamentoGatewayService pagamentoGatewayService;
+    private final ReciboPagamentoService reciboPagamentoService;
 
-    public PagamentoService(
+        public PagamentoService(
             PagamentoRepository pagamentoRepository,
             FaturaRepository faturaRepository,
             UsuarioRepository usuarioRepository,
             ComprovanteService comprovanteService,
             AuditoriaPagamentoService auditoriaService,
             MercadoPagoService mercadoPagoService,
-            PagamentoGatewayService pagamentoGatewayService) {
+            PagamentoGatewayService pagamentoGatewayService,
+            ReciboPagamentoService reciboPagamentoService) {
 
         this.pagamentoRepository = pagamentoRepository;
         this.faturaRepository = faturaRepository;
@@ -50,6 +52,7 @@ public class PagamentoService {
         this.auditoriaService = auditoriaService;
         this.mercadoPagoService = mercadoPagoService;
         this.pagamentoGatewayService = pagamentoGatewayService;
+        this.reciboPagamentoService = reciboPagamentoService;
     }
 
     public List<Pagamento> listarPorAluno(Integer idAluno) {
@@ -71,6 +74,24 @@ public class PagamentoService {
                 .orElseThrow(() -> new NoSuchElementException(
                     "Pagamento não encontrado.")
                 );
+    }
+
+    public byte[] gerarRecibo(Integer idPagamento, Integer idAluno) {
+
+        Pagamento pagamento = buscarPorAluno(idPagamento, idAluno);
+
+        if (pagamento.getStatus() == null
+                || !pagamento.getStatus().equalsIgnoreCase("CONFIRMADO")) {
+            throw new IllegalStateException(
+                    "O recibo só está disponível para pagamentos confirmados.");
+        }
+
+        Usuario aluno = usuarioRepository.findById(idAluno)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "Aluno não encontrado."));
+
+        return reciboPagamentoService.gerar(
+                pagamento, aluno.getNome());
     }
 
     public Path localizarComprovante(Integer idPagamento, Integer idAluno) {
@@ -122,18 +143,27 @@ public class PagamentoService {
 
         boolean pix = "pix".equalsIgnoreCase(metodo);
 
+        String tipoPagamento = null;
+
         if (!pix) {
             Map<String, Object> dadosMetodo =
                     mercadoPagoService.buscarMeioPagamento(metodo);
 
-            Object tipo = dadosMetodo.get("payment_type_id");
+            tipoPagamento = String.valueOf(
+                    dadosMetodo.get("payment_type_id")
+            );
+        }
 
-            if (!"credit_card".equals(tipo)) {
-                throw new IllegalArgumentException(
-                        "Por enquanto, somente cartão de crédito é aceito."
-                );
-            }
+        boolean cartao = "credit_card".equals(tipoPagamento);
+        boolean boleto = "ticket".equals(tipoPagamento);
 
+        if (!pix && !cartao && !boleto) {
+            throw new IllegalArgumentException(
+                    "Meio de pagamento não aceito."
+            );
+        }
+
+        if (cartao) {
             if (requisicao.getToken() == null
                     || requisicao.getToken().isBlank()) {
                 throw new IllegalArgumentException(
@@ -148,6 +178,10 @@ public class PagamentoService {
                 );
             }
         }
+
+        String formaPagamento = pix
+                ? "PIX"
+                : boleto ? "BOLETO" : "CARTAO_CREDITO";
 
         Fatura fatura = faturaRepository
                 .findByIdAndIdAluno(requisicao.getIdFatura(), idAluno)
@@ -174,9 +208,9 @@ public class PagamentoService {
                         "PENDENTE".equalsIgnoreCase(p.getStatus())
                         && (p.getGatewayTransacaoId() == null
                             || p.getGatewayTransacaoId().isBlank())
-                        && (pix
-                            ? "PIX".equalsIgnoreCase(p.getFormaPagamento())
-                            : "CARTAO_CREDITO".equalsIgnoreCase(p.getFormaPagamento()))
+                        && formaPagamento.equalsIgnoreCase(
+                              p.getFormaPagamento()
+                        )
                 )
                 .findFirst()
                 .orElse(null);
@@ -221,7 +255,7 @@ public class PagamentoService {
             salvo = pagamentoGatewayService.registrarTentativa(
                     fatura,
                     idAluno,
-                    pix ? "PIX" : "CARTAO_CREDITO"
+                    formaPagamento
             );
         }
 
@@ -246,7 +280,8 @@ public class PagamentoService {
 
         if (pix) {
             dados.put("installments", 1);
-        } else {
+
+        } else if (cartao) {
             dados.put("token", requisicao.getToken());
             dados.put("installments", requisicao.getInstallments());
 
@@ -328,6 +363,95 @@ public class PagamentoService {
         }
 
         return resultado;
+    }
+
+    // Atualiza o pagamento após uma notificação do Mercado Pago.
+    @Transactional
+    public void atualizarPagamentoNotificado(String idTransacao) {
+
+        if (idTransacao == null || idTransacao.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Identificador da transação não informado."
+            );
+        }
+
+        Map<String, Object> resposta =
+                mercadoPagoService.buscarPagamento(idTransacao);
+
+        if (resposta == null
+                || !idTransacao.equals(String.valueOf(resposta.get("id")))) {
+            throw new IllegalStateException(
+                    "Resposta inválida do Mercado Pago."
+            );
+        }
+
+        String referencia = String.valueOf(
+                resposta.get("external_reference")
+        );
+
+        Pagamento pagamento = pagamentoRepository
+                .findByGatewayTransacaoId(idTransacao)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "Pagamento não encontrado no VibeDance."
+                ));
+
+        if (!String.valueOf(pagamento.getId()).equals(referencia)) {
+            throw new IllegalStateException(
+                    "Referência do pagamento não corresponde ao registro local."
+            );
+        }
+
+        Fatura fatura = faturaRepository
+                .findByIdAndIdAluno(
+                        pagamento.getIdFatura(),
+                        pagamento.getIdAluno()
+                )
+                .orElseThrow(() -> new NoSuchElementException(
+                        "Fatura vinculada ao pagamento não encontrada."
+                ));
+
+        String statusGateway = String.valueOf(resposta.get("status"));
+        String statusAnterior = pagamento.getStatus();
+
+        if ("approved".equalsIgnoreCase(statusGateway)) {
+
+            pagamento.setStatus("CONFIRMADO");
+
+            if (pagamento.getDataConfirmacao() == null) {
+                pagamento.setDataConfirmacao(
+                        LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))
+                );
+            }
+
+            fatura.setStatus("CONFIRMADO");
+            faturaRepository.save(fatura);
+
+        } else if ("rejected".equalsIgnoreCase(statusGateway)
+                || "cancelled".equalsIgnoreCase(statusGateway)) {
+
+            pagamento.setStatus("RECUSADO");
+
+        } else if ("refunded".equalsIgnoreCase(statusGateway)
+                || "charged_back".equalsIgnoreCase(statusGateway)) {
+
+            pagamento.setStatus("ESTORNADO");
+        }
+
+        pagamento.setObservacao(
+                "Mercado Pago: " + resposta.get("status_detail")
+        );
+
+        pagamentoRepository.save(pagamento);
+
+        if (!statusAnterior.equals(pagamento.getStatus())) {
+            System.getLogger(PagamentoService.class.getName()).log(
+                    System.Logger.Level.INFO,
+                    "Pagamento {0} atualizado pelo webhook: {1} -> {2}",
+                    pagamento.getId(),
+                    statusAnterior,
+                    pagamento.getStatus()
+            );
+        }
     }
 
     @Transactional

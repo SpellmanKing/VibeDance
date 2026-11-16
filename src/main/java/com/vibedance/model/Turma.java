@@ -2,7 +2,6 @@ package com.vibedance.model;
 
 import jakarta.persistence.*;
 
-import java.beans.Transient;
 import java.time.LocalTime;
 
 @Entity
@@ -51,6 +50,12 @@ public class Turma {
     // Valor temporário
     @jakarta.persistence.Transient
     private Integer vagasOcupadas = 0;
+
+    @jakarta.persistence.Transient
+    private String professorNome;
+
+    @jakarta.persistence.Transient
+    private String salaNome;
 
     // Construtor vazio exigido pelo JPA
     public Turma() {
@@ -151,5 +156,21 @@ public class Turma {
 
     public void setVagasOcupadas(Integer vagasOcupadas) {
         this.vagasOcupadas = vagasOcupadas;
+    }
+
+    public String getProfessorNome() {
+        return professorNome;
+    }
+
+    public void setProfessorNome(String professorNome) {
+        this.professorNome = professorNome;
+    }
+
+    public String getSalaNome() {
+        return salaNome;
+    }
+
+    public void setSalaNome(String salaNome) {
+        this.salaNome = salaNome;
     }
 }

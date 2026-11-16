@@ -1,0 +1,10 @@
+# Arquivos compilados e gerados pelo Maven
+target/
+
+# Comprovantes enviados durante a execução
+uploads/
+
+# Configurações locais e segredos
+.env
+.env.*
+!.env.example

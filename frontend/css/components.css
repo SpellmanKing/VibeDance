@@ -45,6 +45,7 @@
    ========================================= */
 .vibe-sidebar {
     width: 270px;
+    min-width: 270px;
     background: var(--bg-glass-heavy);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -53,9 +54,11 @@
     flex-direction: column;
     padding: 28px 18px;
     z-index: 10;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
     height: 100vh;
+    overflow-y: auto;
     transition: all var(--transition-normal);
 }
 
@@ -236,6 +239,9 @@
    ========================================= */
 .vibe-main-content {
     flex: 1;
+    min-width: 0;
+    width: calc(100% - 270px);
+    margin-left: 270px;
     padding: 32px 42px;
     overflow-y: auto;
     z-index: 1;
@@ -981,10 +987,168 @@
         flex-wrap: wrap;
     }
     .vibe-main-content {
+        width: 100%;
+        margin-left: 0;
         padding: 20px 16px;
     }
     .top-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+}
+
+/* =========================================
+   AGENDA SEMANAL DO PROFESSOR
+   ========================================= */
+
+.agenda-controles {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.agenda-navegacao,
+.agenda-filtros {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.agenda-navegacao strong {
+    color: var(--text-primary);
+    min-width: 170px;
+    text-align: center;
+}
+
+.agenda-navegacao button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.agenda-filtros input {
+    padding: 10px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.agenda-filtros button {
+    opacity: 0.7;
+}
+
+.agenda-filtros button.active {
+    opacity: 1;
+}
+
+.agenda-calendario {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+}
+
+.agenda-calendario.agenda-modo-dia {
+    grid-template-columns: minmax(260px, 1fr);
+}
+
+.agenda-dia {
+    min-width: 130px;
+    min-height: 220px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+}
+
+.agenda-dia-cabecalho {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.agenda-dia-cabecalho strong {
+    color: var(--text-primary);
+    text-transform: capitalize;
+}
+
+.agenda-dia-cabecalho span {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.agenda-dia-aulas {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.agenda-aula {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glow);
+    border-left: 3px solid var(--neon-purple);
+    border-radius: 8px;
+}
+
+.agenda-aula strong {
+    color: var(--text-primary);
+}
+
+.agenda-aula span {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.agenda-aula button {
+    margin-top: 5px;
+    padding: 9px;
+    font-size: 0.8rem;
+}
+
+.agenda-sem-aula {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    text-align: center;
+    padding: 15px 5px;
+}
+
+@media (max-width: 768px) {
+    .agenda-controles {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .agenda-navegacao,
+    .agenda-filtros {
+        justify-content: center;
+    }
+
+    .agenda-calendario {
+        grid-template-columns: repeat(7, minmax(145px, 1fr));
+    }
+
+    .agenda-calendario.agenda-modo-dia {
+        grid-template-columns: minmax(260px, 1fr);
     }
 }

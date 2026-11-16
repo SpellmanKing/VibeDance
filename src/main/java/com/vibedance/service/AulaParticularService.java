@@ -1,9 +1,11 @@
 package com.vibedance.service;
 
 import com.vibedance.model.AulaParticular;
+import com.vibedance.model.Usuario;
 import com.vibedance.repository.AulaParticularRepository;
 import com.vibedance.repository.ModalidadeRepository;
 import com.vibedance.repository.UsuarioRepository;
+import com.vibedance.repository.TurmaRepository;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,15 +19,18 @@ public class AulaParticularService {
     private final AulaParticularRepository aulaRepository;
     private final ModalidadeRepository modalidadeRepository;
     private final UsuarioRepository usuarioRepository;
+    private final TurmaRepository turmaRepository;
 
     public AulaParticularService(
             AulaParticularRepository aulaRepository,
             ModalidadeRepository modalidadeRepository,
-            UsuarioRepository usuarioRepository) {
+            UsuarioRepository usuarioRepository,
+            TurmaRepository turmaRepository) {
 
         this.aulaRepository = aulaRepository;
         this.modalidadeRepository = modalidadeRepository;
         this.usuarioRepository = usuarioRepository;
+        this.turmaRepository = turmaRepository;
     }
 
     @Transactional
@@ -37,29 +42,59 @@ public class AulaParticularService {
             Integer duracaoMinutos,
             String observacoes) {
 
-        if (idAluno == null || !usuarioRepository.existsById(idAluno)) {
-            throw new IllegalArgumentException("Aluno invalido.");
+        Usuario aluno = usuarioRepository.findById(idAluno)
+            .orElseThrow(() ->
+                new IllegalArgumentException("Aluno nao encontrado.")
+            );
+
+        if (!"ALUNO".equals(aluno.getPerfil())
+                || !Boolean.TRUE.equals(aluno.getAtivo())) {
+            throw new IllegalArgumentException(
+                "Usuario nao e um aluno ativo."
+            );
         }
 
-        if (idModalidade == null || !modalidadeRepository.existsById(idModalidade)) {
-            throw new IllegalArgumentException("Modalidade nao encontrada.");
+        var modalidade = modalidadeRepository.findById(idModalidade)
+            .orElseThrow(() ->
+                new IllegalArgumentException("Modalidade nao encontrada.")
+            );
+
+        if (!Boolean.TRUE.equals(modalidade.getStatus())) {
+            throw new IllegalArgumentException(
+                "A modalidade nao esta ativa."
+            );
         }
 
-        if (idProfessor != null) {
-            var professor = usuarioRepository.findById(idProfessor)
-                .orElseThrow(() ->
-                    new IllegalArgumentException("Professor nao encontrado.")
-                );
+        if (idProfessor == null) {
+            throw new IllegalArgumentException(
+                "Selecione um professor."
+            );
+        }
 
-            boolean perfilProfessor = professor.getAuthorities()
+        Usuario professor = usuarioRepository.findById(idProfessor)
+            .orElseThrow(() ->
+                new IllegalArgumentException("Professor nao encontrado.")
+            );
+
+        if (!"PROFESSOR".equals(professor.getPerfil())
+                || !Boolean.TRUE.equals(professor.getAtivo())) {
+            throw new IllegalArgumentException(
+                "Professor nao encontrado ou inativo."
+            );
+        }
+
+        boolean professorMinistraModalidade =
+            turmaRepository.findByModalidadeId(idModalidade)
                 .stream()
-                .anyMatch(a -> "ROLE_PROFESSOR".equals(a.getAuthority()));
-
-            if (!perfilProfessor) {
-                throw new IllegalArgumentException(
-                    "O usuario informado nao e professor."
+                .anyMatch(turma ->
+                    Boolean.TRUE.equals(turma.getAtivo())
+                    && idProfessor.equals(turma.getProfessorId())
                 );
-            }
+
+        if (!professorMinistraModalidade) {
+            throw new IllegalArgumentException(
+                "O professor selecionado nao ministra essa modalidade."
+            );
         }
 
         LocalDateTime agora = LocalDateTime.now(
@@ -93,7 +128,7 @@ public class AulaParticularService {
                     ? 60
                     : a.getDuracaoMinutos();
 
-                LocalDateTime fimExistente = 
+                LocalDateTime fimExistente =
                     inicioExistente.plusMinutes(duracaoExistente);
 
                 return dataHora.isBefore(fimExistente) &&
@@ -108,27 +143,29 @@ public class AulaParticularService {
 
         if (idProfessor != null) {
 
-            boolean professorOcupado = aulaRepository.findByIdProfessor(idProfessor)
-                .stream()
-                .filter(a -> "SOLICITADO".equals(a.getStatus()) ||
-                             "CONFIRMADO".equals(a.getStatus()))
-                .anyMatch(a -> {
-                    LocalDateTime inicioExistente = a.getDataHora();
+            boolean professorOcupado =
+                aulaRepository.findByIdProfessor(idProfessor)
+                    .stream()
+                    .filter(a -> "SOLICITADO".equals(a.getStatus()) ||
+                                 "CONFIRMADO".equals(a.getStatus()))
+                    .anyMatch(a -> {
+                        LocalDateTime inicioExistente = a.getDataHora();
 
-                    int duracaoExistente = a.getDuracaoMinutos() == null
-                        ? 60
-                        : a.getDuracaoMinutos();
+                        int duracaoExistente =
+                            a.getDuracaoMinutos() == null
+                                ? 60
+                                : a.getDuracaoMinutos();
 
-                    LocalDateTime fimExistente =
-                        inicioExistente.plusMinutes(duracaoExistente);
+                        LocalDateTime fimExistente =
+                            inicioExistente.plusMinutes(duracaoExistente);
 
-                    return dataHora.isBefore(fimExistente) &&
-                           dataHora.plusMinutes(duracao).isAfter(inicioExistente);
-                });
+                        return dataHora.isBefore(fimExistente) &&
+                               fimNovaAula.isAfter(inicioExistente);
+                    });
 
             if (professorOcupado) {
                 throw new IllegalStateException(
-                    "O professor já possui uma aula nesse horário."
+                    "O professor ja possui uma aula nesse horario."
                 );
             }
         }

@@ -81,6 +81,7 @@ public class ProfessorPresencaController {
         List<Matricula> matriculas = matriculaRepository
             .findByIdTurmaAndStatus(turmaId, "ATIVA");
 
+
         List<Integer> ids = matriculas.stream()
             .map(Matricula::getIdAluno)
             .toList();
@@ -94,6 +95,13 @@ public class ProfessorPresencaController {
                 (a, b) -> b
             ));
 
+        Map<Integer, Matricula> matriculasPorAluno = matriculas.stream()
+            .collect(Collectors.toMap(
+                Matricula::getIdAluno,
+                matricula -> matricula,
+                (a, b) -> a
+            ));
+
         List<Usuario> alunos = usuarioRepository.findAllById(ids);
 
         List<AlunoChamadaResponse> resposta = alunos.stream()
@@ -101,6 +109,8 @@ public class ProfessorPresencaController {
                 aluno.getId(),
                 aluno.getNome(),
                 aluno.getEmail(),
+                aluno.getTelefone(),
+                matriculasPorAluno.get(aluno.getId()).getDataMatricula(),
                 presencas.get(aluno.getId())
             ))
             .toList();

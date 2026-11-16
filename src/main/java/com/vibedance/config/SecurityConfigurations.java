@@ -40,6 +40,7 @@ public class SecurityConfigurations {
                     "/css/**", "/js/**", "/Aluno/**", "/Professor/**", "/Admin/**").permitAll();
                     req.requestMatchers(HttpMethod.GET, "/api/modalidades").permitAll();
                     req.requestMatchers(HttpMethod.GET, "/api/turmas/**").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/api/webhooks/mercadopago").permitAll();
 
                     req.requestMatchers("/api/aluno/**").hasRole("ALUNO");
                     req.requestMatchers("/api/professor/**").hasRole("PROFESSOR");

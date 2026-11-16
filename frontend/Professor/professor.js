@@ -4,6 +4,10 @@
  */
 
 let chamadaEstadoAtual = []; // Mantém o estado da chamada em memória para a turma/data
+let alunosChamadaAtual = [];
+let turmasAgendaProfessor = [];
+let dataReferenciaAgenda = new Date();
+let modoAgendaProfessor = 'semana';
 
 document.addEventListener('DOMContentLoaded', () => {
     inicializarPainelProfessor();
@@ -32,16 +36,79 @@ async function inicializarPainelProfessor() {
         inputData.value = hoje;
     }
 
-    renderizarAgendaProfessor(user);
     await popularSelectsTurma(user);
+    await carregarDashboardProfessor();
     await carregarListaChamada();
-    renderizarMuralComunicados(user);
+    await renderizarMuralComunicados();
 
     // Sincronização em tempo real: reflete aprovações do admin ou pagamentos do aluno instantaneamente
     if (window.VibeStore && typeof window.VibeStore.onSync === 'function') {
         window.VibeStore.onSync(() => {
             carregarListaChamada();
         });
+    }
+}
+
+async function carregarDashboardProfessor() {
+    const token = sessionStorage.getItem('vibedance_token');
+
+    if (!token) return;
+
+    try {
+        const resposta = await fetch('/api/professor/dashboard', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!resposta.ok) {
+            console.error('Erro ao carregar dashboard do professor:', resposta.status);
+            return;
+        }
+
+        const dados = await resposta.json();
+
+        const alunosEl = document.getElementById('stat-prof-alunos');
+        const presencaEl = document.getElementById('stat-prof-presenca');
+        const proximaEl = document.getElementById('stat-prof-proxima');
+        const detalheEl = document.getElementById('stat-prof-proxima-detalhe');
+        const dataEl = document.getElementById('stat-prof-proxima-data');
+
+        if (alunosEl) {
+            alunosEl.textContent = dados.totalAlunos;
+        }
+
+        if (presencaEl) {
+            presencaEl.textContent = `${dados.presencaMedia}%`;
+        }
+
+        if (proximaEl) {
+            proximaEl.textContent = dados.proximaAulaHorario;
+        }
+
+        if (dataEl) {
+            if (dados.proximaAulaData) {
+                const partes = dados.proximaAulaData.split('-').map(Number);
+                const data = new Date(partes[0], partes[1] - 1, partes[2]);
+
+                dataEl.textContent = data.toLocaleDateString('pt-BR', {
+                    weekday: 'long',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            } else {
+                dataEl.textContent = 'Sem próxima aula';
+            }
+        }
+
+        if (detalheEl) {
+            detalheEl.textContent = dados.proximaAulaDetalhe;
+        }
+
+    } catch (erro) {
+        console.error('Erro ao consultar dashboard:', erro);
     }
 }
 
@@ -63,66 +130,214 @@ function trocarAbaDocente(tabId, btnElement) {
 window.trocarAbaDocente = trocarAbaDocente;
 
 /**
- * Renderiza os cards da Agenda Semanal
+ * Renderiza os cards da Agenda Semanal usando turmas do backend
  */
-function renderizarAgendaProfessor(user) {
+function renderizarAgendaProfessor(turmas) {
     const container = document.getElementById('container-agenda-professor');
     if (!container) return;
 
-    // Turmas do professor ou todas se for Admin em modo docente
-    const todasTurmas = window.VibeStore.getTurmas();
-    const turmas = todasTurmas.filter(t => t.professorId === user.id || user.perfil === 'ADMINISTRADOR');
+    turmasAgendaProfessor = turmas || [];
 
-    // Atualiza contadores
     const countEl = document.getElementById('stat-prof-turmas');
-    if (countEl) countEl.textContent = turmas.length;
+    if (countEl) countEl.textContent = turmasAgendaProfessor.length;
 
-    container.innerHTML = '';
+    atualizarCalendarioProfessor();
+}
 
-    if (turmas.length === 0) {
+function obterDataLocal(data) {
+    return new Date(
+        data.getFullYear(),
+        data.getMonth(),
+        data.getDate()
+    );
+}
+
+function formatarDataAgenda(data) {
+    return data.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit'
+    });
+}
+
+function turmaAconteceNoDia(turma, dia) {
+    if (!turma.diasSemana) return false;
+
+    const dias = turma.diasSemana
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    const nomesDias = [
+        'domingo',
+        'segunda',
+        'terca',
+        'quarta',
+        'quinta',
+        'sexta',
+        'sabado'
+    ];
+
+    return dias.includes(nomesDias[dia]);
+}
+
+function atualizarCalendarioProfessor() {
+    const container = document.getElementById('container-agenda-professor');
+    const periodo = document.getElementById('agenda-periodo');
+    const inputData = document.getElementById('agenda-data');
+
+    if (!container) return;
+    container.classList.toggle(
+        'agenda-modo-dia',
+        modoAgendaProfessor === 'dia'
+    );
+
+    const dataBase = obterDataLocal(dataReferenciaAgenda);
+
+    if (inputData) {
+        inputData.value = [
+            dataBase.getFullYear(),
+            String(dataBase.getMonth() + 1).padStart(2, '0'),
+            String(dataBase.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    const inicioSemana = new Date(dataBase);
+    const diaSemana = inicioSemana.getDay();
+
+    inicioSemana.setDate(
+        inicioSemana.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1)
+    );
+
+    const dias = [];
+
+    if (modoAgendaProfessor === 'dia') {
+        dias.push(dataBase);
+    } else {
+        for (let i = 0; i < 7; i++) {
+            const dia = new Date(inicioSemana);
+            dia.setDate(inicioSemana.getDate() + i);
+            dias.push(dia);
+        }
+    }
+
+    if (periodo) {
+        if (modoAgendaProfessor === 'dia') {
+            periodo.textContent = dataBase.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+            });
+        } else {
+            const fimSemana = new Date(inicioSemana);
+            fimSemana.setDate(inicioSemana.getDate() + 6);
+
+            periodo.textContent =
+                `${formatarDataAgenda(inicioSemana)} até ${formatarDataAgenda(fimSemana)}`;
+        }
+    }
+
+    document.getElementById('btn-agenda-semana')?.classList.toggle(
+        'active',
+        modoAgendaProfessor === 'semana'
+    );
+
+    document.getElementById('btn-agenda-dia')?.classList.toggle(
+        'active',
+        modoAgendaProfessor === 'dia'
+    );
+
+    if (turmasAgendaProfessor.length === 0) {
         container.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 30px; text-align: center; color: var(--text-muted);">
+            <div style="padding: 30px; text-align: center; color: var(--text-muted);">
                 Nenhuma turma atribuída a este professor no momento.
             </div>
         `;
         return;
     }
 
-    turmas.forEach(t => {
-        const card = document.createElement('div');
-        card.className = 'vibe-card';
-        card.innerHTML = `
-            <div class="card-top-banner">
-                <i class="fas fa-calendar-alt banner-bg-icon"></i>
-                <span class="card-badge badge-purple">${t.nivel || 'Geral'}</span>
-            </div>
-            <div class="card-body">
-                <h4 class="card-title">${t.nome}</h4>
-                <p class="card-desc">${t.modalidadeNome} • <strong>${t.salaNome || 'Studio A'}</strong></p>
+    container.innerHTML = dias.map(data => {
+        const turmasDoDia = turmasAgendaProfessor.filter(turma =>
+            turmaAconteceNoDia(turma, data.getDay())
+        );
 
-                <div class="card-meta-list">
-                    <div class="meta-item">
-                        <i class="fas fa-calendar-week"></i>
-                        <span>Dias: <strong>${t.dias}</strong></span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-clock"></i>
-                        <span>Horário: <strong>${t.horario}</strong></span>
-                    </div>
-                    <div class="meta-item">
-                        <i class="fas fa-users"></i>
-                        <span>Alunos matriculados: <strong>${t.ocupadas || 0}</strong></span>
-                    </div>
+        turmasDoDia.sort((a, b) =>
+            String(a.horario || '').localeCompare(String(b.horario || ''))
+        );
+
+        return `
+            <section class="agenda-dia">
+                <div class="agenda-dia-cabecalho">
+                    <strong>
+                        ${data.toLocaleDateString('pt-BR', { weekday: 'long' })}
+                    </strong>
+                    <span>${formatarDataAgenda(data)}</span>
                 </div>
 
-                <button class="btn-vibe-primary" style="width: 100%;" onclick="abrirChamadaTurma(${t.id})">
-                    <i class="fas fa-user-check"></i> Iniciar Chamada Desta Turma
-                </button>
-            </div>
+                <div class="agenda-dia-aulas">
+                    ${
+                        turmasDoDia.length
+                            ? turmasDoDia.map(turma => `
+                                <article class="agenda-aula">
+                                    <strong>${turma.nomeTurma || 'Turma'}</strong>
+                                    <span>${turma.modalidade?.nome || 'Modalidade'}</span>
+                                    <span>
+                                        <i class="fas fa-clock"></i>
+                                        ${turma.horario ? String(turma.horario).substring(0, 5) : '--:--'}
+                                        ${turma.horarioFim ? ' - ' + String(turma.horarioFim).substring(0, 5) : ''}
+                                    </span>
+                                    <span>${turma.nivel || 'Geral'}</span>
+
+                                    <button
+                                        class="btn-vibe-primary"
+                                        onclick="abrirChamadaTurma(${turma.id})"
+                                    >
+                                        <i class="fas fa-user-check"></i>
+                                        Iniciar chamada
+                                    </button>
+                                </article>
+                            `).join('')
+                            : '<p class="agenda-sem-aula">Nenhuma aula neste dia.</p>'
+                    }
+                </div>
+            </section>
         `;
-        container.appendChild(card);
-    });
+    }).join('');
 }
+
+function navegarAgendaProfessor(direcao) {
+    const quantidade = modoAgendaProfessor === 'semana' ? 7 : 1;
+
+    dataReferenciaAgenda.setDate(
+        dataReferenciaAgenda.getDate() + (direcao * quantidade)
+    );
+
+    atualizarCalendarioProfessor();
+}
+
+function alterarDataAgendaProfessor(valor) {
+    if (!valor) return;
+
+    const partes = valor.split('-').map(Number);
+
+    dataReferenciaAgenda = new Date(
+        partes[0],
+        partes[1] - 1,
+        partes[2]
+    );
+
+    atualizarCalendarioProfessor();
+}
+
+function alterarModoAgendaProfessor(modo) {
+    if (modo !== 'dia' && modo !== 'semana') return;
+
+    modoAgendaProfessor = modo;
+    atualizarCalendarioProfessor();
+}
+
+window.navegarAgendaProfessor = navegarAgendaProfessor;
+window.alterarDataAgendaProfessor = alterarDataAgendaProfessor;
+window.alterarModoAgendaProfessor = alterarModoAgendaProfessor;
 
 function abrirChamadaTurma(turmaId) {
     const select = document.getElementById('select-turma-chamada');
@@ -158,6 +373,7 @@ async function popularSelectsTurma(user) {
         }
 
         const turmas = await resposta.json();
+        renderizarAgendaProfessor(turmas);
 
         const optionsHtml = turmas.map(t =>
             `<option value="${t.id}">${t.nomeTurma} (${t.diasSemana})</option>`
@@ -167,14 +383,9 @@ async function popularSelectsTurma(user) {
             selectChamada.innerHTML = optionsHtml;
         }
 
-        // O comunicado ainda utiliza as turmas do armazenamento local.
+        // Usa as mesmas turmas reais do backend no formulário de comunicados.
         if (selectComunicado) {
-            const turmasLocais = window.VibeStore.getTurmas()
-                .filter(t => t.professorId === user.id || user.perfil === 'ADMINISTRADOR');
-
-            selectComunicado.innerHTML = turmasLocais.map(t =>
-                `<option value="${t.id}">${t.nome} (${t.dias})</option>`
-            ).join('');
+            selectComunicado.innerHTML = optionsHtml;
         }
 
     } catch (erro) {
@@ -230,6 +441,7 @@ async function carregarListaChamada() {
         }
 
         const alunos = await resposta.json();
+        alunosChamadaAtual = alunos;
 
         tbody.innerHTML = '';
         chamadaEstadoAtual = [];
@@ -275,7 +487,13 @@ async function carregarListaChamada() {
                         </div>
                     </div>
                 </td>
-                <td>${aluno.email}</td>
+                <td>${aluno.email || '—'}</td>
+                <td>${aluno.telefone || '—'}</td>
+                <td>
+                    ${aluno.dataMatricula
+                        ? new Date(aluno.dataMatricula).toLocaleDateString('pt-BR')
+                        : '—'}
+                </td>
                 <td>
                     <span style="color:var(--text-dim); font-size:0.8rem;">—</span>
                 </td>
@@ -318,6 +536,51 @@ async function carregarListaChamada() {
     }
 }
 window.carregarListaChamada = carregarListaChamada;
+
+function exportarListaAlunos() {
+    if (!alunosChamadaAtual || alunosChamadaAtual.length === 0) {
+        window.VibeUI.showToast('Não há alunos para exportar.', 'error');
+        return;
+    }
+
+    const linhas = [
+        ['Nome', 'E-mail', 'Telefone', 'Data da Matrícula']
+    ];
+
+    alunosChamadaAtual.forEach(aluno => {
+        const data = aluno.dataMatricula
+            ? new Date(aluno.dataMatricula).toLocaleDateString('pt-BR')
+            : '';
+
+        linhas.push([
+            aluno.nome || '',
+            aluno.email || '',
+            aluno.telefone || '',
+            data
+        ]);
+    });
+
+    const csv = '\uFEFF' + linhas.map(linha =>
+        linha.map(valor =>
+            '"' + String(valor).replace(/"/g, '""') + '"'
+        ).join(';')
+    ).join('\n');
+
+    const arquivo = new Blob([csv], {
+        type: 'text/csv;charset=utf-8;'
+    });
+
+    const url = URL.createObjectURL(arquivo);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = 'alunos-da-turma.csv';
+    link.click();
+
+    URL.revokeObjectURL(url);
+}
+
+window.exportarListaAlunos = exportarListaAlunos;
 
 function abrirModalComprovanteProf(alunoId, turmaId) {
     const aluno = window.VibeStore.getUsuarios().find(u => u.id === Number(alunoId));
@@ -475,6 +738,7 @@ async function salvarChamadaVirtual() {
         );
 
         await carregarListaChamada();
+        await carregarDashboardProfessor();
 
     } catch (erro) {
         console.error('Erro ao salvar chamada:', erro);
@@ -489,88 +753,184 @@ window.salvarChamadaVirtual = salvarChamadaVirtual;
 /**
  * Salva e publica novo comunicado ou música
  */
-function salvarNovoComunicado(e) {
+async function salvarNovoComunicado(e) {
     e.preventDefault();
 
-    const user = window.VibeAuth.getUser();
+    const token = sessionStorage.getItem('vibedance_token');
+
     const turmaId = Number(document.getElementById('comunicado-turma-select').value);
     const titulo = document.getElementById('comunicado-titulo').value.trim();
     const conteudo = document.getElementById('comunicado-conteudo').value.trim();
     const link = document.getElementById('comunicado-link').value.trim();
     const urgente = document.getElementById('comunicado-urgente').checked;
 
-    window.VibeStore.salvarComunicado({
-        turmaId,
-        professorId: user.id,
-        professorNome: user.nome,
-        titulo,
-        conteudo,
-        link,
-        urgente
-    });
-
-    // Se tiver link com spotify ou música, também adiciona aos materiais da turma
-    if (link) {
-        window.VibeStore.salvarMaterial({
-            turmaId,
-            professorId: user.id,
-            titulo: titulo,
-            tipo: link.includes('spotify') ? 'PLAYLIST' : 'VIDEO_COREOGRAFIA',
-            url: link,
-            descricao: conteudo,
-            duracao: 'Atualizado hoje'
-        });
-    }
-
-    window.VibeUI.showToast('Comunicado e materiais enviados para a turma com sucesso!', 'success');
-    document.getElementById('form-novo-comunicado').reset();
-    renderizarMuralComunicados(user);
-}
-
-function renderizarMuralComunicados(user) {
-    const container = document.getElementById('container-lista-comunicados');
-    if (!container) return;
-
-    const comunicados = window.VibeStore.getComunicados();
-    container.innerHTML = '';
-
-    if (comunicados.length === 0) {
-        container.innerHTML = `
-            <div style="padding: 20px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
-                Nenhum comunicado publicado ainda.
-            </div>
-        `;
+    if (!token) {
+        window.VibeUI.showToast('Faça login novamente.', 'error');
         return;
     }
 
-    comunicados.forEach(c => {
-        const item = document.createElement('div');
-        item.className = 'glass-panel';
-        item.style.padding = '18px 22px';
+    if (!turmaId || !titulo || !conteudo) {
+        window.VibeUI.showToast('Preencha os campos obrigatórios.', 'warning');
+        return;
+    }
 
-        const linkHtml = c.link ? `
-            <div style="margin-top: 12px;">
-                <a href="${c.link}" target="_blank" class="btn-vibe-outline" style="font-size: 0.8rem; text-decoration: none;">
-                    <i class="fas fa-link"></i> Acessar Anexo / Playlist
-                </a>
-            </div>
-        ` : '';
+    try {
+        // Se houver link, cadastra também como material da aula.
+        if (link) {
+            let tipo = 'LINK_EXTERNO';
+            const linkMinusculo = link.toLowerCase();
 
-        const badgeUrgente = c.urgente 
-            ? '<span class="badge badge-pink" style="margin-bottom: 6px;"><i class="fas fa-fire"></i> Destaque</span>' 
-            : '';
+            if (linkMinusculo.includes('spotify.com')) {
+                tipo = 'PLAYLIST';
+            } else if (
+                linkMinusculo.includes('youtube.com') ||
+                linkMinusculo.includes('youtu.be')
+            ) {
+                tipo = 'VIDEO_COREOGRAFIA';
+            } else if (linkMinusculo.split('?')[0].endsWith('.pdf')) {
+                tipo = 'DOCUMENTO_PDF';
+            }
 
-        item.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                <div>
-                    ${badgeUrgente}
-                    <h4 style="color: #fff; font-size: 1.05rem; font-family: var(--font-heading);">${c.titulo}</h4>
+            const respostaMaterial = await fetch('/api/professor/materiais', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                    turmaId,
+                    titulo,
+                    tipo,
+                    url: link,
+                    descricao: conteudo
+                })
+            });
+
+            if (!respostaMaterial.ok) {
+                throw new Error(await respostaMaterial.text());
+            }
+        }
+
+        // Salva o comunicado no banco de dados.
+        const respostaComunicado = await fetch('/api/professor/comunicados', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                turmaId,
+                titulo,
+                conteudo,
+                link,
+                urgente
+            })
+        });
+
+        if (!respostaComunicado.ok) {
+            throw new Error(await respostaComunicado.text());
+        }
+
+        window.VibeUI.showToast(
+            link
+                ? 'Comunicado e material publicados com sucesso!'
+                : 'Comunicado publicado com sucesso!',
+            'success'
+        );
+
+        document.getElementById('form-novo-comunicado').reset();
+
+        await renderizarMuralComunicados();
+
+    } catch (erro) {
+        console.error('Erro ao publicar:', erro);
+        window.VibeUI.showToast(
+            'Não foi possível publicar: ' + erro.message,
+            'error'
+        );
+    }
+}
+
+/**
+ * Carrega os comunicados publicados pelo professor.
+ */
+async function renderizarMuralComunicados() {
+    const container = document.getElementById('container-lista-comunicados');
+    if (!container) return;
+
+    const token = sessionStorage.getItem('vibedance_token');
+
+    if (!token) {
+        container.innerHTML = '<p>Faça login novamente para consultar os comunicados.</p>';
+        return;
+    }
+
+    try {
+        const resposta = await fetch('/api/professor/comunicados', {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+
+        if (!resposta.ok) {
+            throw new Error(await resposta.text());
+        }
+
+        const comunicados = await resposta.json();
+        container.innerHTML = '';
+
+        if (comunicados.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
+                    Nenhum comunicado publicado ainda.
                 </div>
-                <span style="font-size: 0.78rem; color: var(--text-dim);">${c.data || 'Hoje'}</span>
-            </div>
-            <p style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.5;">${c.conteudo}</p>
-            ${linkHtml}
-        `;
-        container.appendChild(item);
-    });
+            `;
+            return;
+        }
+
+        comunicados.forEach(c => {
+            const item = document.createElement('div');
+            item.className = 'glass-panel';
+            item.style.padding = '18px 22px';
+
+            const dataFormatada = c.data
+                ? new Date(c.data).toLocaleString('pt-BR')
+                : 'Agora';
+
+            const linkHtml = c.link ? `
+                <div style="margin-top: 12px;">
+                    <a href="${c.link}" target="_blank" rel="noopener noreferrer"
+                       class="btn-vibe-outline"
+                       style="font-size: 0.8rem; text-decoration: none;">
+                        <i class="fas fa-link"></i> Acessar Anexo / Playlist
+                    </a>
+                </div>
+            ` : '';
+
+            const badgeUrgente = c.urgente
+                ? '<span class="badge badge-pink" style="margin-bottom: 6px;"><i class="fas fa-fire"></i> Destaque</span>'
+                : '';
+
+            item.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                    <div>
+                        ${badgeUrgente}
+                        <h4 style="color: #fff; font-size: 1.05rem; font-family: var(--font-heading);"></h4>
+                    </div>
+                    <span style="font-size: 0.78rem; color: var(--text-dim);">${dataFormatada}</span>
+                </div>
+                <p style="color: var(--text-secondary); font-size: 0.88rem; line-height: 1.5;"></p>
+                ${linkHtml}
+            `;
+
+            item.querySelector('h4').textContent = c.titulo;
+            item.querySelector('p').textContent = c.conteudo;
+
+            container.appendChild(item);
+        });
+
+    } catch (erro) {
+        console.error('Erro ao carregar comunicados:', erro);
+        container.innerHTML = '<p>Não foi possível carregar os comunicados.</p>';
+    }
 }
