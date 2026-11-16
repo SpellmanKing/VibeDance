@@ -180,13 +180,13 @@ CREATE TABLE IF NOT EXISTS auditoria_pagamentos (
 
 -- Inserção de Usuários Base (1 Admin, 2 Professores, 4 Alunos)
 INSERT INTO usuarios (id_usuario, nome, cpf, email, senha, telefone, tipo_perfil) VALUES
-(1, 'Administrador Vibe', '000.000.000-01', 'admin@vibedance.com', 'admin123', '(61) 99999-0001', 'ADMINISTRADOR'),
-(2, 'Prof. Diego Santos', '111.111.111-02', 'prof.diego@vibedance.com', 'prof123', '(61) 99999-0002', 'PROFESSOR'),
-(3, 'Profa. Camila Dança', '222.222.222-03', 'prof.camila@vibedance.com', 'prof123', '(61) 99999-0003', 'PROFESSOR'),
-(4, 'Juliana Paiva', '333.333.333-04', 'aluno.juliana@vibedance.com', 'aluno123', '(61) 98888-1001', 'ALUNO'),
-(5, 'Lucas Rocha', '444.444.444-05', 'aluno.lucas@vibedance.com', 'aluno123', '(61) 98888-1002', 'ALUNO'),
-(6, 'Mariana Lima', '555.555.555-06', 'aluno.mariana@vibedance.com', 'aluno123', '(61) 98888-1003', 'ALUNO'),
-(7, 'Gabriel Souza', '666.666.666-07', 'aluno.gabriel@vibedance.com', 'aluno123', '(61) 98888-1004', 'ALUNO')
+(1, 'Administrador Vibe', '000.000.000-01', 'admin@vibedance.com', crypt('admin123', gen_salt('bf', 10)), '(61) 99999-0001', 'ADMINISTRADOR'),
+(2, 'Prof. Diego Santos', '111.111.111-02', 'prof.diego@vibedance.com', crypt('prof123', gen_salt('bf', 10)), '(61) 99999-0002', 'PROFESSOR'),
+(3, 'Profa. Camila Dança', '222.222.222-03', 'prof.camila@vibedance.com', crypt('prof123', gen_salt('bf', 10)), '(61) 99999-0003', 'PROFESSOR'),
+(4, 'Juliana Paiva', '333.333.333-04', 'aluno.juliana@vibedance.com', crypt('aluno123', gen_salt('bf', 10)), '(61) 98888-1001', 'ALUNO'),
+(5, 'Lucas Rocha', '444.444.444-05', 'aluno.lucas@vibedance.com', crypt('aluno123', gen_salt('bf', 10)), '(61) 98888-1002', 'ALUNO'),
+(6, 'Mariana Lima', '555.555.555-06', 'aluno.mariana@vibedance.com', crypt('aluno123', gen_salt('bf', 10)), '(61) 98888-1003', 'ALUNO'),
+(7, 'Gabriel Souza', '666.666.666-07', 'aluno.gabriel@vibedance.com', crypt('aluno123', gen_salt('bf', 10)), '(61) 98888-1004', 'ALUNO')
 ON CONFLICT (id_usuario) DO NOTHING;
 
 -- Inserção de Salas do Estúdio
