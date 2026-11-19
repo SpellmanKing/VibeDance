@@ -3,497 +3,380 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VibeDance - Entre no Ritmo | Autenticação</title>
-    
-    <!-- Design System Tokens & Components -->
+    <link rel="icon" type="image/svg+xml" href="img/vibedance-simbolo.svg">
+    <title>Entrar · VibeDance</title>
+    <meta name="description" content="Plataforma de gestão para estúdios e companhias de dança.">
     <link rel="stylesheet" href="css/theme.css">
     <link rel="stylesheet" href="css/components.css">
-
-    <style>
-        body.login-body {
-            background-color: var(--bg-base);
-            min-height: 100vh;
-            display: flex;
-            align-items: stretch;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        /* Container Split Screen */
-        .login-split-wrapper {
-            display: flex;
-            width: 100vw;
-            min-height: 100vh;
-        }
-
-        /* Lado Esquerdo: A 'Vibe' (Visual Rítmico, Neon & Movimento) */
-        .vibe-showcase-panel {
-            flex: 1.25;
-            background: linear-gradient(135deg, #100820 0%, #1e113a 50%, #0d0618 100%);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 50px 60px;
-            overflow: hidden;
-            border-right: 1px solid var(--border-subtle);
-        }
-
-        /* Luzes Cênicas de Palco */
-        .stage-light {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(140px);
-            pointer-events: none;
-        }
-        .light-purple {
-            width: 500px;
-            height: 500px;
-            top: -120px;
-            left: -100px;
-            background: rgba(168, 85, 247, 0.45);
-        }
-        .light-pink {
-            width: 450px;
-            height: 450px;
-            bottom: -80px;
-            right: -80px;
-            background: rgba(236, 72, 153, 0.4);
-        }
-        .light-cyan {
-            width: 300px;
-            height: 300px;
-            top: 45%;
-            left: 20%;
-            background: rgba(6, 182, 212, 0.25);
-        }
-
-        /* Conteúdo do Banner */
-        .showcase-header {
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .showcase-brand-title {
-            font-family: var(--font-heading);
-            font-size: 1.8rem;
-            font-weight: 800;
-            background: var(--grad-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
-
-        .showcase-hero {
-            z-index: 2;
-            max-width: 540px;
-            margin: auto 0;
-        }
-
-        .live-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(236, 72, 153, 0.15);
-            border: 1px solid rgba(236, 72, 153, 0.4);
-            color: var(--neon-pink);
-            padding: 6px 14px;
-            border-radius: var(--radius-full);
-            font-size: 0.82rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 22px;
-        }
-
-        .hero-headline {
-            font-family: var(--font-heading);
-            font-size: 3.4rem;
-            font-weight: 900;
-            line-height: 1.12;
-            color: #fff;
-            margin-bottom: 20px;
-        }
-
-        .hero-headline span {
-            background: var(--grad-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 35px rgba(236, 72, 153, 0.4);
-        }
-
-        .hero-subtext {
-            font-size: 1.12rem;
-            line-height: 1.6;
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-        }
-
-        /* Equalizador estilizado no banner */
-        .showcase-sound-card {
-            background: rgba(22, 14, 42, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-glow);
-            border-radius: var(--radius-md);
-            padding: 16px 22px;
-            display: inline-flex;
-            align-items: center;
-            gap: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-        }
-
-        .showcase-footer {
-            z-index: 2;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            color: var(--text-muted);
-            font-size: 0.88rem;
-        }
-
-        /* Lado Direito: Formulário de Autenticação */
-        .vibe-auth-panel {
-            flex: 1;
-            background: var(--bg-surface);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
-            position: relative;
-        }
-
-        .auth-card {
-            width: 100%;
-            max-width: 440px;
-            background: var(--bg-card);
-            backdrop-filter: blur(25px);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-lg);
-            padding: 42px 36px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-            position: relative;
-        }
-
-        .auth-card::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: 20%;
-            right: 20%;
-            height: 2px;
-            background: var(--grad-primary);
-            box-shadow: 0 0 15px var(--neon-purple);
-        }
-
-        .auth-card-header {
-            margin-bottom: 28px;
-        }
-
-        .auth-card-header h2 {
-            font-family: var(--font-heading);
-            font-size: 1.85rem;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: 8px;
-        }
-
-        .auth-card-header p {
-            color: var(--text-muted);
-            font-size: 0.92rem;
-        }
-
-        /* Input Wrappers com Ícone e Feedback */
-        .auth-field {
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .auth-field label {
-            display: block;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-        }
-
-        .input-group {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-group i.input-icon {
-            position: absolute;
-            left: 16px;
-            color: var(--text-muted);
-            font-size: 1rem;
-            transition: color var(--transition-fast);
-        }
-
-        .input-group input {
-            width: 100%;
-            height: 50px;
-            padding: 0 45px 0 48px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            color: #fff;
-            font-size: 0.95rem;
-            font-family: var(--font-body);
-            outline: none;
-            transition: all var(--transition-fast);
-        }
-
-        .input-group input:focus {
-            border-color: var(--neon-purple);
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
-        }
-
-        .input-group input:focus ~ i.input-icon {
-            color: var(--neon-purple);
-        }
-
-        .btn-toggle-eye {
-            position: absolute;
-            right: 14px;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 8px;
-            font-size: 1rem;
-            transition: color var(--transition-fast);
-        }
-
-        .btn-toggle-eye:hover {
-            color: var(--neon-cyan);
-        }
-
-        .field-error-msg {
-            display: none;
-            font-size: 0.8rem;
-            color: #f87171;
-            margin-top: 6px;
-            align-items: center;
-            gap: 6px;
-        }
-
-        /* Alerta Geral de Erro */
-        .auth-alert {
-            display: none;
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.4);
-            color: #fca5a5;
-            padding: 12px 16px;
-            border-radius: var(--radius-md);
-            font-size: 0.88rem;
-            margin-bottom: 22px;
-            align-items: center;
-            gap: 10px;
-        }
-
-        /* Demo Quick Access */
-        .demo-access-divider {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 28px 0 18px;
-            color: var(--text-dim);
-            font-size: 0.78rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .demo-access-divider::before, .demo-access-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border-subtle);
-        }
-
-        .demo-pills-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .demo-pill-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-md);
-            padding: 10px 8px;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            transition: all var(--transition-fast);
-        }
-
-        .demo-pill-btn:hover {
-            background: rgba(168, 85, 247, 0.18);
-            border-color: var(--neon-purple);
-            color: #fff;
-            transform: translateY(-2px);
-        }
-
-        .demo-pill-btn.admin:hover { border-color: var(--neon-amber); }
-        .demo-pill-btn.prof:hover { border-color: var(--neon-pink); }
-        .demo-pill-btn.aluno:hover { border-color: var(--neon-cyan); }
-
-        /* Responsividade */
-        @media (max-width: 960px) {
-            .login-split-wrapper { flex-direction: column; }
-            .vibe-showcase-panel { padding: 40px 24px; min-height: 380px; }
-            .hero-headline { font-size: 2.2rem; }
-            .vibe-auth-panel { padding: 30px 16px; }
-            .auth-card { padding: 30px 20px; box-shadow: none; }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="login-body">
+<body class="login">
 
-    <div class="login-split-wrapper">
-        
-        <!-- LADO ESQUERDO: Experiência Visual 'The Vibe' -->
-        <section class="vibe-showcase-panel">
-            <div class="stage-light light-purple"></div>
-            <div class="stage-light light-pink"></div>
-            <div class="stage-light light-cyan"></div>
-
-            <div class="showcase-header">
-                <div class="brand-icon-box">
-                    <i class="fas fa-compact-disc"></i>
-                </div>
-                <div class="showcase-brand-title">VibeDance</div>
-            </div>
-
-            <div class="showcase-hero">
-                <div class="live-tag">
-                    <i class="fas fa-bolt"></i> Plataforma Inteligente de Dança
-                </div>
-
-                <h1 class="hero-headline">
-                    Sinta o <span>Beat</span>.<br>
-                    Viva a Dança.
-                </h1>
-
-                <p class="hero-subtext">
-                    A experiência completa para alunos apaixonados, professores visionários e estúdios modernos. Gerencie turmas, chamada virtual, playlists e coreografias em tempo real.
-                </p>
-
-                <!-- Card de Demonstração de Áudio e Onda Sonora -->
-                <div class="showcase-sound-card">
-                    <div class="soundwave-visualizer">
-                        <div class="soundwave-bar"></div>
-                        <div class="soundwave-bar"></div>
-                        <div class="soundwave-bar"></div>
-                        <div class="soundwave-bar"></div>
-                        <div class="soundwave-bar"></div>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.88rem; font-weight: 700; color: #fff;">Ritmo em Movimento</div>
-                        <div style="font-size: 0.78rem; color: var(--text-muted);">180+ alunos dançando hoje</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="showcase-footer">
-                <div><i class="fas fa-shield-alt" style="color: var(--neon-emerald); margin-right: 6px;"></i> RBAC Seguro & JWT</div>
-                <div>•</div>
-                <div>Tecnologia Web Moderna</div>
-            </div>
-        </section>
-
-        <!-- LADO DIREITO: Card de Autenticação -->
-        <section class="vibe-auth-panel">
-            <div class="auth-card">
-                
-                <div class="auth-card-header">
-                    <h2>Bem-vindo(a)!</h2>
-                    <p>Entre com suas credenciais para acessar seu estúdio.</p>
-                </div>
-
-                <!-- Banner de Alerta Dinâmico -->
-                <div id="auth-alert" class="auth-alert">
-                    <i class="fas fa-exclamation-circle" style="font-size: 1.1rem;"></i>
-                    <span id="auth-alert-text">Erro na autenticação</span>
-                </div>
-
-                <form id="form-login" novalidate>
-                    <!-- Campo E-mail -->
-                    <div class="auth-field">
-                        <label for="email">E-mail Cadastrado</label>
-                        <div class="input-group">
-                            <i class="fas fa-envelope input-icon"></i>
-                            <input type="email" id="email" placeholder="seu.email@vibedance.com" required autocomplete="email">
-                        </div>
-                        <div id="email-error" class="field-error-msg">
-                            <i class="fas fa-info-circle"></i> <span>E-mail inválido</span>
-                        </div>
-                    </div>
-
-                    <!-- Campo Senha -->
-                    <div class="auth-field">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <label for="senha" style="margin-bottom: 0;">Sua Senha</label>
-                            <a href="#" id="link-esqueci-senha" style="font-size: 0.78rem; color: var(--neon-purple); text-decoration: none; font-weight: 600;">Esqueceu?</a>
-                        </div>
-                        <div class="input-group">
-                            <i class="fas fa-lock input-icon"></i>
-                            <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
-                            <button type="button" class="btn-toggle-eye" id="btn-toggle-senha" title="Mostrar/Ocultar Senha">
-                                <i class="fas fa-eye" id="eye-icon"></i>
-                            </button>
-                        </div>
-                        <div id="senha-error" class="field-error-msg">
-                            <i class="fas fa-info-circle"></i> <span>A senha precisa de no mínimo 6 caracteres</span>
-                        </div>
-                    </div>
-
-                    <button type="submit" id="btn-submit-login" class="btn-vibe-primary" style="width: 100%; height: 50px; font-size: 1rem; margin-top: 10px;">
-                        <span>Entrar no Sistema</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-
-                <!-- Divisor de Demonstração com 1 Clique -->
-                <div class="demo-access-divider">
-                    <span>Acesso Rápido (Demonstração)</span>
-                </div>
-
-                <div class="demo-pills-grid">
-                    <button type="button" class="demo-pill-btn admin" onclick="executarDemoLogin('ADMINISTRADOR')">
-                        <i class="fas fa-crown" style="color: var(--neon-amber); font-size: 1.1rem;"></i>
-                        <span>Admin</span>
-                    </button>
-
-                    <button type="button" class="demo-pill-btn prof" onclick="executarDemoLogin('PROFESSOR')">
-                        <i class="fas fa-user-tie" style="color: var(--neon-pink); font-size: 1.1rem;"></i>
-                        <span>Professor</span>
-                    </button>
-
-                    <button type="button" class="demo-pill-btn aluno" onclick="executarDemoLogin('ALUNO')">
-                        <i class="fas fa-music" style="color: var(--neon-cyan); font-size: 1.1rem;"></i>
-                        <span>Aluno</span>
-                    </button>
-                </div>
-
-            </div>
-        </section>
-
+    <!-- ===== Palco: bailarina sob o refletor, ao fundo ===== -->
+    <div class="scene" aria-hidden="true">
+        <div class="layer layer-photo"></div>
+        <div class="haze"></div>
     </div>
 
-    <!-- Scripts da Aplicação -->
-    <script src="js/state.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="login.js"></script>
+    <!-- ===== Navegação ===== -->
+    <header class="topnav">
+        <a class="brand" href="#estudio">
+            <span class="brand-mark"><img src="img/vibedance-simbolo.svg" alt="" width="36" height="36"></span>
+            <span class="brand-text">VibeDance</span>
+        </a>
+        <nav class="topnav-links" aria-label="Seções">
+            <a href="#estudio" class="is-active">O estúdio</a>
+            <a href="#turmas">Turmas</a>
+            <a href="#grade">Grade</a>
+            <a href="#quero-dancar">Quero dançar</a>
+            <a href="#portal" class="nav-cta">Entrar</a>
+        </nav>
+        <span class="secure-badge"><i class="fas fa-shield-halved"></i><span>Acesso exclusivo <strong>@vibedance.com</strong></span></span>
+    </header>
+
+    <main class="landing">
+        <!-- ===== Abertura ===== -->
+        <section class="hero" id="estudio">
+            <div class="hero-copy">
+                <span class="eyebrow">Gestão para estúdios e companhias de dança</span>
+                <h1>Onde o ritmo encontra a <em>gestão</em>.</h1>
+                <p class="hero-sub" id="hero-sub">Grade, chamada, financeiro e evolução dos alunos sincronizados em tempo real entre administração, professores e alunos.</p>
+
+                <div class="role-switch" role="tablist" aria-label="Escolha seu perfil">
+                    <button type="button" role="tab" aria-selected="true" class="is-active" data-perfil="ADM"><i class="fas fa-crown"></i> ADM</button>
+                    <button type="button" role="tab" aria-selected="false" data-perfil="Professor"><i class="fas fa-person-chalkboard"></i> Professor</button>
+                    <button type="button" role="tab" aria-selected="false" data-perfil="Aluno"><i class="fas fa-shoe-prints"></i> Aluno</button>
+                    <span class="role-glider" aria-hidden="true"></span>
+                </div>
+
+                <ul class="role-points" id="role-points"></ul>
+
+                <div class="stage-count login-count" aria-hidden="true">
+                    <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+                </div>
+            </div>
+
+            <!-- ===== Portal (login) ===== -->
+            <div class="login-wrap" id="portal">
+                <form class="login-card" id="form-login" data-tom="ADM" novalidate>
+                    <div class="login-head">
+                        <div>
+                            <span class="login-kicker">Portal</span>
+                            <h2>Entrar</h2>
+                        </div>
+                        <span class="role-chip"><i class="fas fa-crown" id="role-chip-icone" aria-hidden="true"></i><span id="role-chip">ADM</span></span>
+                    </div>
+                    <div class="login-palco" aria-hidden="true">
+                        <div class="palco-meta">
+                            <span class="palco-faixa" id="palco-faixa">Faixa 01 · A regência</span>
+                            <span class="palco-andamento" id="palco-andamento">Maestoso · <b class="num">72</b> bpm</span>
+                        </div>
+                        <div class="palco-motivos">
+                            <svg class="palco-motivo motivo-pauta" data-motivo="ADM" viewBox="0 0 300 64" preserveAspectRatio="xMidYMid meet">
+                                <g class="pauta"><line x1="0" y1="12" x2="300" y2="12"/><line x1="0" y1="22" x2="300" y2="22"/><line x1="0" y1="32" x2="300" y2="32"/><line x1="0" y1="42" x2="300" y2="42"/><line x1="0" y1="52" x2="300" y2="52"/></g>
+                                <line class="barra" x1="150" y1="12" x2="150" y2="52"/><line class="barra" x1="296" y1="12" x2="296" y2="52"/><line class="barra" x1="300" y1="12" x2="300" y2="52"/>
+                                <g class="nota" style="--i:0"><ellipse cx="30" cy="47" rx="6" ry="4.4"/><line x1="35.5" y1="47" x2="35.5" y2="20"/></g>
+                                <g class="nota" style="--i:1"><ellipse cx="62" cy="37" rx="6" ry="4.4"/><line x1="67.5" y1="37" x2="67.5" y2="10"/></g>
+                                <g class="nota" style="--i:2"><ellipse cx="94" cy="27" rx="6" ry="4.4"/><line x1="99.5" y1="27" x2="99.5" y2="2"/></g>
+                                <g class="nota" style="--i:3"><ellipse cx="126" cy="32" rx="6" ry="4.4"/><line x1="131.5" y1="32" x2="131.5" y2="6"/></g>
+                                <g class="nota" style="--i:4"><ellipse cx="176" cy="22" rx="6" ry="4.4"/><ellipse cx="208" cy="17" rx="6" ry="4.4"/><path d="M181.5 22 V0 M213.5 17 V-4 M181.5 0 L213.5 -4"/></g>
+                                <g class="nota" style="--i:5"><ellipse cx="244" cy="37" rx="6" ry="4.4"/><line x1="249.5" y1="37" x2="249.5" y2="10"/></g>
+                                <g class="nota" style="--i:6"><ellipse cx="274" cy="42" rx="6.5" ry="4.6" class="vazada"/></g>
+                            </svg>
+                            <div class="palco-motivo motivo-contagem" data-motivo="Professor">
+                                <span style="--i:0">5</span><span style="--i:1">6</span><span style="--i:2">7</span><span style="--i:3">8</span>
+                                <i class="metronomo"><b></b></i>
+                            </div>
+                            <svg class="palco-motivo motivo-onda" data-motivo="Aluno" viewBox="0 0 300 60" preserveAspectRatio="none">
+                                <defs><clipPath id="onda-login"><rect class="onda-progresso" x="0" y="0" width="300" height="60"/></clipPath></defs>
+                                <g class="onda-base"><rect x="2" y="26" width="3" height="8" rx="1.5"/><rect x="8.5" y="15.5" width="3" height="29" rx="1.5"/><rect x="15" y="17.5" width="3" height="25" rx="1.5"/><rect x="21.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="28" y="14.5" width="3" height="31" rx="1.5"/><rect x="34.5" y="18" width="3" height="24" rx="1.5"/><rect x="41" y="21" width="3" height="18" rx="1.5"/><rect x="47.5" y="16" width="3" height="28" rx="1.5"/><rect x="54" y="20" width="3" height="20" rx="1.5"/><rect x="60.5" y="17.5" width="3" height="25" rx="1.5"/><rect x="67" y="13.5" width="3" height="33" rx="1.5"/><rect x="73.5" y="22.5" width="3" height="15" rx="1.5"/><rect x="80" y="17.5" width="3" height="25" rx="1.5"/><rect x="86.5" y="18" width="3" height="24" rx="1.5"/><rect x="93" y="20" width="3" height="20" rx="1.5"/><rect x="99.5" y="14" width="3" height="32" rx="1.5"/><rect x="106" y="15" width="3" height="30" rx="1.5"/><rect x="112.5" y="24" width="3" height="12" rx="1.5"/><rect x="119" y="17.5" width="3" height="25" rx="1.5"/><rect x="125.5" y="20.5" width="3" height="19" rx="1.5"/><rect x="132" y="17.5" width="3" height="25" rx="1.5"/><rect x="138.5" y="12" width="3" height="36" rx="1.5"/><rect x="145" y="19.5" width="3" height="21" rx="1.5"/><rect x="151.5" y="20" width="3" height="20" rx="1.5"/><rect x="158" y="19.5" width="3" height="21" rx="1.5"/><rect x="164.5" y="21" width="3" height="18" rx="1.5"/><rect x="171" y="14" width="3" height="32" rx="1.5"/><rect x="177.5" y="13" width="3" height="34" rx="1.5"/><rect x="184" y="25" width="3" height="10" rx="1.5"/><rect x="190.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="197" y="21.5" width="3" height="17" rx="1.5"/><rect x="203.5" y="18.5" width="3" height="23" rx="1.5"/><rect x="210" y="11.5" width="3" height="37" rx="1.5"/><rect x="216.5" y="16.5" width="3" height="27" rx="1.5"/><rect x="223" y="23" width="3" height="14" rx="1.5"/><rect x="229.5" y="21" width="3" height="18" rx="1.5"/><rect x="236" y="22" width="3" height="16" rx="1.5"/><rect x="242.5" y="14.5" width="3" height="31" rx="1.5"/><rect x="249" y="11.5" width="3" height="37" rx="1.5"/><rect x="255.5" y="22" width="3" height="16" rx="1.5"/><rect x="262" y="21.5" width="3" height="17" rx="1.5"/><rect x="268.5" y="23" width="3" height="14" rx="1.5"/><rect x="275" y="20" width="3" height="20" rx="1.5"/><rect x="281.5" y="11.5" width="3" height="37" rx="1.5"/><rect x="288" y="14.5" width="3" height="31" rx="1.5"/><rect x="294.5" y="25.5" width="3" height="9" rx="1.5"/></g>
+                                <g class="onda-cheia" clip-path="url(#onda-login)"><rect x="2" y="26" width="3" height="8" rx="1.5"/><rect x="8.5" y="15.5" width="3" height="29" rx="1.5"/><rect x="15" y="17.5" width="3" height="25" rx="1.5"/><rect x="21.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="28" y="14.5" width="3" height="31" rx="1.5"/><rect x="34.5" y="18" width="3" height="24" rx="1.5"/><rect x="41" y="21" width="3" height="18" rx="1.5"/><rect x="47.5" y="16" width="3" height="28" rx="1.5"/><rect x="54" y="20" width="3" height="20" rx="1.5"/><rect x="60.5" y="17.5" width="3" height="25" rx="1.5"/><rect x="67" y="13.5" width="3" height="33" rx="1.5"/><rect x="73.5" y="22.5" width="3" height="15" rx="1.5"/><rect x="80" y="17.5" width="3" height="25" rx="1.5"/><rect x="86.5" y="18" width="3" height="24" rx="1.5"/><rect x="93" y="20" width="3" height="20" rx="1.5"/><rect x="99.5" y="14" width="3" height="32" rx="1.5"/><rect x="106" y="15" width="3" height="30" rx="1.5"/><rect x="112.5" y="24" width="3" height="12" rx="1.5"/><rect x="119" y="17.5" width="3" height="25" rx="1.5"/><rect x="125.5" y="20.5" width="3" height="19" rx="1.5"/><rect x="132" y="17.5" width="3" height="25" rx="1.5"/><rect x="138.5" y="12" width="3" height="36" rx="1.5"/><rect x="145" y="19.5" width="3" height="21" rx="1.5"/><rect x="151.5" y="20" width="3" height="20" rx="1.5"/><rect x="158" y="19.5" width="3" height="21" rx="1.5"/><rect x="164.5" y="21" width="3" height="18" rx="1.5"/><rect x="171" y="14" width="3" height="32" rx="1.5"/><rect x="177.5" y="13" width="3" height="34" rx="1.5"/><rect x="184" y="25" width="3" height="10" rx="1.5"/><rect x="190.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="197" y="21.5" width="3" height="17" rx="1.5"/><rect x="203.5" y="18.5" width="3" height="23" rx="1.5"/><rect x="210" y="11.5" width="3" height="37" rx="1.5"/><rect x="216.5" y="16.5" width="3" height="27" rx="1.5"/><rect x="223" y="23" width="3" height="14" rx="1.5"/><rect x="229.5" y="21" width="3" height="18" rx="1.5"/><rect x="236" y="22" width="3" height="16" rx="1.5"/><rect x="242.5" y="14.5" width="3" height="31" rx="1.5"/><rect x="249" y="11.5" width="3" height="37" rx="1.5"/><rect x="255.5" y="22" width="3" height="16" rx="1.5"/><rect x="262" y="21.5" width="3" height="17" rx="1.5"/><rect x="268.5" y="23" width="3" height="14" rx="1.5"/><rect x="275" y="20" width="3" height="20" rx="1.5"/><rect x="281.5" y="11.5" width="3" height="37" rx="1.5"/><rect x="288" y="14.5" width="3" height="31" rx="1.5"/><rect x="294.5" y="25.5" width="3" height="9" rx="1.5"/></g>
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="muted">Use sua conta institucional <strong>@vibedance.com</strong>.</p>
+
+                    <div class="callout danger" id="login-erro" role="alert" hidden><i class="fas fa-circle-exclamation"></i><span></span></div>
+                    <div class="callout warn" id="login-aviso" hidden><i class="fas fa-circle-info"></i><span></span></div>
+
+                    <div class="field">
+                        <label for="email">E-mail institucional</label>
+                        <div class="input-icon">
+                            <i class="fas fa-at"></i>
+                            <input class="input" id="email" name="email" type="email" autocomplete="username" placeholder="nome@vibedance.com" required autofocus>
+                        </div>
+                        <span class="hint" id="email-hint">Somente endereços @vibedance.com têm acesso.</span>
+                    </div>
+
+                    <div class="field">
+                        <label for="senha">Senha</label>
+                        <div class="input-icon">
+                            <i class="fas fa-lock"></i>
+                            <input class="input" id="senha" name="senha" type="password" autocomplete="current-password" required>
+                            <button type="button" class="pass-toggle" id="ver-senha" aria-label="Mostrar senha"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+
+                    <label class="remember"><input type="checkbox" id="lembrar"> Manter conectado neste dispositivo</label>
+
+                    <button class="btn btn-primary btn-block btn-lg" type="submit" id="btn-entrar">Entrar</button>
+
+                    <a class="login-join" href="#quero-dancar"><span>Ainda não dança com a gente?</span><strong>Quero dançar <i class="fas fa-arrow-right"></i></strong></a>
+
+                    <details class="demo">
+                        <summary>Contas de demonstração</summary>
+                        <div class="demo-list" id="demo-list">
+                            <button type="button" data-perfil="ADM" data-email="admin@vibedance.com" data-senha="admin123"><span class="badge magenta">ADM</span>admin@vibedance.com</button>
+                            <button type="button" data-perfil="Professor" data-email="prof.diego@vibedance.com" data-senha="prof123"><span class="badge info">Professor</span>prof.diego@vibedance.com</button>
+                            <button type="button" data-perfil="Professor" data-email="prof.camila@vibedance.com" data-senha="prof123"><span class="badge info">Professor</span>prof.camila@vibedance.com</button>
+                            <button type="button" data-perfil="Aluno" data-email="aluno.juliana@vibedance.com" data-senha="aluno123"><span class="badge cyan">Aluno</span>aluno.juliana@vibedance.com</button>
+                            <button type="button" data-perfil="Aluno" data-email="aluno.gabriel@vibedance.com" data-senha="aluno123"><span class="badge cyan">Aluno</span>aluno.gabriel@vibedance.com</button>
+                        </div>
+                    </details>
+                </form>
+            </div>
+        </section>
+
+        <!-- ===== Números do estúdio (vitrine pública) ===== -->
+        <section class="stats" id="numeros" aria-label="O estúdio em números">
+            <div class="stat"><b class="num" data-stat="alunos">—</b><span>alunos dançando</span></div>
+            <div class="stat"><b class="num" data-stat="turmas">—</b><span>turmas abertas</span></div>
+            <div class="stat"><b class="num" data-stat="modalidades">—</b><span>modalidades</span></div>
+            <div class="stat"><b class="num" data-stat="ocupacao" data-sufixo="%">—</b><span>ocupação média</span></div>
+        </section>
+
+        <!-- ===== Turmas abertas ===== -->
+        <section class="block" id="turmas" aria-labelledby="turmas-titulo">
+            <header class="block-head">
+                <div>
+                    <span class="eyebrow">Turmas abertas</span>
+                    <h2 id="turmas-titulo">Escolha o seu <em>ritmo</em>.</h2>
+                    <p class="block-sub"><span class="live-pip" aria-hidden="true"></span><span id="turmas-contagem">Carregando turmas…</span></p>
+                </div>
+                <div class="chips" id="filtro-nivel" role="group" aria-label="Filtrar por nível">
+                    <button type="button" class="is-active" data-nivel="">Todas</button>
+                    <button type="button" data-nivel="INICIANTE">Iniciante</button>
+                    <button type="button" data-nivel="INTERMEDIARIO">Intermediário</button>
+                    <button type="button" data-nivel="AVANCADO">Avançado</button>
+                </div>
+            </header>
+            <div class="class-grid" id="lista-turmas" aria-live="polite">
+                <div class="class-card is-skeleton"></div><div class="class-card is-skeleton"></div><div class="class-card is-skeleton"></div>
+            </div>
+        </section>
+
+        <!-- ===== Grade da semana ===== -->
+        <section class="block" id="grade" aria-labelledby="grade-titulo">
+            <header class="block-head">
+                <div>
+                    <span class="eyebrow">Grade da semana</span>
+                    <h2 id="grade-titulo">Cada dia tem o seu <em>compasso</em>.</h2>
+                </div>
+            </header>
+            <div class="week">
+                <div class="week-days" id="dias" role="tablist" aria-label="Dia da semana"></div>
+                <div class="week-list" id="aulas-dia" role="tabpanel" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- ===== Professores ===== -->
+        <section class="block" id="professores" aria-labelledby="prof-titulo">
+            <header class="block-head">
+                <div>
+                    <span class="eyebrow">Quem conduz</span>
+                    <h2 id="prof-titulo">Professores que <em>dançam</em> com você.</h2>
+                </div>
+            </header>
+            <div class="teacher-grid" id="lista-professores"></div>
+        </section>
+
+        <!-- ===== Quero dançar: pedido de acesso ===== -->
+        <section class="block audition" id="quero-dancar" aria-labelledby="qd-titulo">
+            <div class="audition-intro">
+                <span class="eyebrow">Quero dançar</span>
+                <h2 id="qd-titulo">Sua primeira aula começa em <em>quatro tempos</em>.</h2>
+                <p class="block-sub-txt">Conte quem você é e o que quer dançar. A recepção conversa com você, reserva a turma e libera seu acesso ao Portal do Aluno.</p>
+
+                <div class="audition-mode" role="tablist" aria-label="Pedido de acesso">
+                    <button type="button" role="tab" data-modo="pedido" class="is-active" aria-selected="true"><i class="fas fa-shoe-prints"></i> Fazer meu pedido</button>
+                    <button type="button" role="tab" data-modo="acompanhar" aria-selected="false"><i class="fas fa-route"></i> Já enviei: acompanhar</button>
+                </div>
+
+                <ol class="qd-tempos">
+                    <li class="qd-tempo"><b>1</b><span><strong>Você</strong><small>Quem vai dançar</small></span></li>
+                    <li class="qd-tempo"><b>2</b><span><strong>Seu ritmo</strong><small>Estilos e turmas</small></span></li>
+                    <li class="qd-tempo"><b>3</b><span><strong>Sua rotina</strong><small>Dias e objetivos</small></span></li>
+                    <li class="qd-tempo"><b>4</b><span><strong>Revisão</strong><small>Confira e envie</small></span></li>
+                </ol>
+                <ul class="audition-perks">
+                    <li><i class="fas fa-shield-halved"></i> Seus dados ficam só com o estúdio.</li>
+                    <li><i class="fas fa-clock"></i> Resposta da recepção em até 2 dias úteis.</li>
+                </ul>
+            </div>
+
+            <div class="audition-stage">
+                <div class="qd-card">
+                    <header class="qd-card-head">
+                        <span class="ticket-kicker" id="qd-passo">Tempo 1 de 4</span>
+                        <div class="qd-beats" aria-hidden="true"><span class="qd-beat"></span><span class="qd-beat"></span><span class="qd-beat"></span><span class="qd-beat"></span></div>
+                    </header>
+
+                    <form id="qd-form" novalidate autocomplete="on">
+                        <!-- Campo invisível contra robôs -->
+                        <input type="text" name="site" tabindex="-1" autocomplete="off" class="qd-hp" aria-hidden="true">
+
+                        <fieldset class="qd-step">
+                            <legend>Quem vai dançar?</legend>
+                            <div class="qd-grid">
+                                <div class="field wide"><label for="qd-nome">Nome completo</label><input class="input" id="qd-nome" name="nome" autocomplete="name" maxlength="120" required></div>
+                                <div class="field"><label for="qd-email">E-mail</label><input class="input" id="qd-email" name="email" type="email" autocomplete="email" maxlength="150" required placeholder="voce@email.com"><span class="hint">Use um e-mail pessoal. Seu login @vibedance.com é criado pelo estúdio.</span></div>
+                                <div class="field"><label for="qd-tel">Telefone / WhatsApp</label><input class="input num" id="qd-tel" name="telefone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="(61) 90000-0000"></div>
+                                <div class="field"><label for="qd-cpf">CPF</label><input class="input num" id="qd-cpf" name="cpf" inputmode="numeric" required placeholder="000.000.000-00"></div>
+                                <div class="field"><label for="qd-nasc">Data de nascimento <span class="faint">(opcional)</span></label><input class="input num" id="qd-nasc" name="nascimento" type="date"></div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="qd-step" hidden>
+                            <legend>Qual é o seu ritmo?</legend>
+                            <p class="qd-label">Estilos que você quer dançar</p>
+                            <div class="qd-chips" id="qd-modalidades"></div>
+                            <p class="qd-label">Sua experiência</p>
+                            <div class="qd-options" id="qd-exp"></div>
+                            <p class="qd-label">Turmas de interesse <span class="faint num" id="qd-turmas-cont">0/3</span></p>
+                            <div class="qd-turmas" id="qd-turmas"></div>
+                        </fieldset>
+
+                        <fieldset class="qd-step" hidden>
+                            <legend>Como é a sua rotina?</legend>
+                            <p class="qd-label">Dias livres</p>
+                            <div class="qd-chips" id="qd-dias"></div>
+                            <p class="qd-label">Períodos</p>
+                            <div class="qd-chips" id="qd-periodos"></div>
+                            <p class="qd-label">O que você busca na dança? <span class="faint">(opcional)</span></p>
+                            <div class="qd-chips" id="qd-objetivos"></div>
+                            <div class="qd-grid">
+                                <div class="field wide"><label for="qd-msg">Algo que a gente deva saber? <span class="faint">(opcional)</span></label><textarea class="input" id="qd-msg" name="mensagem" rows="3" maxlength="1000" placeholder="Lesões, objetivos, horários preferidos…"></textarea><span class="hint"><span id="qd-cont" class="num">0</span>/1000</span></div>
+                                <div class="field wide"><label for="qd-origem">Como conheceu o VibeDance? <span class="faint">(opcional)</span></label><select class="input" id="qd-origem" name="origem"></select></div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="qd-step" hidden>
+                            <legend>Tudo certo?</legend>
+                            <div id="qd-revisao"></div>
+                            <label class="qd-consent"><input type="checkbox" name="consentimento"> <span>Autorizo o VibeDance a usar estes dados para entrar em contato sobre minha matrícula, conforme a LGPD.</span></label>
+                        </fieldset>
+
+                        <div class="callout danger" id="qd-erro" role="alert" hidden><i class="fas fa-circle-exclamation"></i><span></span></div>
+
+                        <footer class="qd-actions">
+                            <button type="button" class="btn btn-ghost" id="qd-voltar" hidden><i class="fas fa-arrow-left"></i> Voltar</button>
+                            <button type="submit" class="btn btn-primary" id="qd-avancar">Continuar <i class="fas fa-arrow-right"></i></button>
+                        </footer>
+                    </form>
+                    <div id="qd-ingresso" hidden></div>
+                </div>
+
+                <div class="qd-card qd-track" id="qd-acompanhar" hidden>
+                    <header class="qd-card-head"><span class="ticket-kicker">Acompanhar pedido</span></header>
+                    <form id="qd-consulta" class="qd-grid" novalidate>
+                        <div class="field"><label for="qd-prot">Protocolo</label><input class="input num" id="qd-prot" name="protocolo" required placeholder="VD-XXXXXX" autocomplete="off" style="text-transform:uppercase"></div>
+                        <div class="field"><label for="qd-cemail">E-mail do pedido</label><input class="input" id="qd-cemail" name="email" type="email" required autocomplete="email"></div>
+                        <button class="btn btn-primary wide" type="submit"><i class="fas fa-magnifying-glass"></i> Consultar</button>
+                    </form>
+                    <div id="qd-resultado" aria-live="polite"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== Os três portais ===== -->
+        <section class="portals" id="portais" aria-labelledby="portais-titulo">
+            <header class="portals-head">
+                <span class="eyebrow">Um estúdio, três bastidores</span>
+                <h2 id="portais-titulo">Cada perfil com o seu <em>palco</em>.</h2>
+            </header>
+            <div class="portals-grid">
+                <article class="portal-card is-adm">
+                    <div class="portal-media">
+                        <img src="img/hero-admin.jpg" alt="Companhia de dança ensaiando em uníssono no palco" loading="lazy">
+                        <span class="portal-faixa">Faixa 01</span>
+                        <span class="portal-andamento">Maestoso · <span class="num">72</span> bpm</span>
+                        <svg class="portal-motivo motivo-pauta" viewBox="0 0 300 64" aria-hidden="true" preserveAspectRatio="xMinYMid meet">
+                            <g class="pauta"><line x1="0" y1="12" x2="300" y2="12"/><line x1="0" y1="22" x2="300" y2="22"/><line x1="0" y1="32" x2="300" y2="32"/><line x1="0" y1="42" x2="300" y2="42"/><line x1="0" y1="52" x2="300" y2="52"/></g>
+                            <line class="barra" x1="150" y1="12" x2="150" y2="52"/><line class="barra" x1="296" y1="12" x2="296" y2="52"/><line class="barra" x1="300" y1="12" x2="300" y2="52"/>
+                            <g class="notas">
+                                <g class="nota" style="--i:0"><ellipse cx="30" cy="47" rx="6" ry="4.4"/><line x1="35.5" y1="47" x2="35.5" y2="20"/></g>
+                                <g class="nota" style="--i:1"><ellipse cx="62" cy="37" rx="6" ry="4.4"/><line x1="67.5" y1="37" x2="67.5" y2="10"/></g>
+                                <g class="nota" style="--i:2"><ellipse cx="94" cy="27" rx="6" ry="4.4"/><line x1="99.5" y1="27" x2="99.5" y2="2"/></g>
+                                <g class="nota" style="--i:3"><ellipse cx="126" cy="32" rx="6" ry="4.4"/><line x1="131.5" y1="32" x2="131.5" y2="6"/></g>
+                                <g class="nota" style="--i:4"><ellipse cx="176" cy="22" rx="6" ry="4.4"/><ellipse cx="208" cy="17" rx="6" ry="4.4"/><path d="M181.5 22 V0 M213.5 17 V-4 M181.5 0 L213.5 -4" /></g>
+                                <g class="nota" style="--i:5"><ellipse cx="244" cy="37" rx="6" ry="4.4"/><line x1="249.5" y1="37" x2="249.5" y2="10"/></g>
+                                <g class="nota" style="--i:6"><ellipse cx="274" cy="42" rx="6.5" ry="4.6" class="vazada"/></g>
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="portal-body">
+                        <span class="portal-tag"><i class="fas fa-crown" aria-hidden="true"></i> ADM · A regência</span>
+                        <h3>Cockpit do estúdio</h3>
+                        <p>Quem rege a orquestra: receita, inadimplência, ocupação e retenção, com a grade horária sem conflitos.</p>
+                        <ul class="portal-notas">
+                            <li><i class="fas fa-chart-line" aria-hidden="true"></i> Financeiro</li>
+                            <li><i class="fas fa-calendar-week" aria-hidden="true"></i> Grade horária</li>
+                            <li><i class="fas fa-door-open" aria-hidden="true"></i> Matrículas</li>
+                        </ul>
+                        <button type="button" class="portal-cta" data-entrar="ADM">Entrar como ADM <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    </div>
+                </article>
+                <article class="portal-card is-professor">
+                    <div class="portal-media">
+                        <img src="img/hero-professor.jpg" alt="Professora de dança conduzindo a turma diante do espelho" loading="lazy">
+                        <span class="portal-faixa">Faixa 02</span>
+                        <span class="portal-andamento">Allegro · <span class="num">120</span> bpm</span>
+                        <div class="portal-motivo motivo-contagem" aria-hidden="true">
+                            <span style="--i:0">5</span><span style="--i:1">6</span><span style="--i:2">7</span><span style="--i:3">8</span>
+                            <i class="metronomo"><b></b></i>
+                        </div>
+                    </div>
+                    <div class="portal-body">
+                        <span class="portal-tag"><i class="fas fa-person-chalkboard" aria-hidden="true"></i> Professor · A contagem</span>
+                        <h3>Hoje no estúdio</h3>
+                        <p>Quem puxa o "5, 6, 7, 8": chamada em um toque, diário de classe, repertório e avaliações técnicas.</p>
+                        <ul class="portal-notas">
+                            <li><i class="fas fa-clipboard-check" aria-hidden="true"></i> Chamada</li>
+                            <li><i class="fas fa-book-open" aria-hidden="true"></i> Diário</li>
+                            <li><i class="fas fa-star-half-stroke" aria-hidden="true"></i> Avaliações</li>
+                        </ul>
+                        <button type="button" class="portal-cta" data-entrar="Professor">Entrar como professor <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    </div>
+                </article>
+                <article class="portal-card is-aluno">
+                    <div class="portal-media">
+                        <img src="img/hero-aluno.jpg" alt="Bailarino em pleno salto sob a luz do refletor" loading="lazy">
+                        <span class="portal-faixa">Faixa 03</span>
+                        <span class="portal-andamento">Vivace · <span class="num">160</span> bpm</span>
+                        <svg class="portal-motivo motivo-onda" viewBox="0 0 300 60" aria-hidden="true" preserveAspectRatio="none">
+                            <defs><clipPath id="onda-tocada"><rect class="onda-progresso" x="0" y="0" width="300" height="60"/></clipPath></defs>
+                            <g class="onda-base"><rect x="2" y="26" width="3" height="8" rx="1.5"/><rect x="8.5" y="15.5" width="3" height="29" rx="1.5"/><rect x="15" y="17.5" width="3" height="25" rx="1.5"/><rect x="21.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="28" y="14.5" width="3" height="31" rx="1.5"/><rect x="34.5" y="18" width="3" height="24" rx="1.5"/><rect x="41" y="21" width="3" height="18" rx="1.5"/><rect x="47.5" y="16" width="3" height="28" rx="1.5"/><rect x="54" y="20" width="3" height="20" rx="1.5"/><rect x="60.5" y="17.5" width="3" height="25" rx="1.5"/><rect x="67" y="13.5" width="3" height="33" rx="1.5"/><rect x="73.5" y="22.5" width="3" height="15" rx="1.5"/><rect x="80" y="17.5" width="3" height="25" rx="1.5"/><rect x="86.5" y="18" width="3" height="24" rx="1.5"/><rect x="93" y="20" width="3" height="20" rx="1.5"/><rect x="99.5" y="14" width="3" height="32" rx="1.5"/><rect x="106" y="15" width="3" height="30" rx="1.5"/><rect x="112.5" y="24" width="3" height="12" rx="1.5"/><rect x="119" y="17.5" width="3" height="25" rx="1.5"/><rect x="125.5" y="20.5" width="3" height="19" rx="1.5"/><rect x="132" y="17.5" width="3" height="25" rx="1.5"/><rect x="138.5" y="12" width="3" height="36" rx="1.5"/><rect x="145" y="19.5" width="3" height="21" rx="1.5"/><rect x="151.5" y="20" width="3" height="20" rx="1.5"/><rect x="158" y="19.5" width="3" height="21" rx="1.5"/><rect x="164.5" y="21" width="3" height="18" rx="1.5"/><rect x="171" y="14" width="3" height="32" rx="1.5"/><rect x="177.5" y="13" width="3" height="34" rx="1.5"/><rect x="184" y="25" width="3" height="10" rx="1.5"/><rect x="190.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="197" y="21.5" width="3" height="17" rx="1.5"/><rect x="203.5" y="18.5" width="3" height="23" rx="1.5"/><rect x="210" y="11.5" width="3" height="37" rx="1.5"/><rect x="216.5" y="16.5" width="3" height="27" rx="1.5"/><rect x="223" y="23" width="3" height="14" rx="1.5"/><rect x="229.5" y="21" width="3" height="18" rx="1.5"/><rect x="236" y="22" width="3" height="16" rx="1.5"/><rect x="242.5" y="14.5" width="3" height="31" rx="1.5"/><rect x="249" y="11.5" width="3" height="37" rx="1.5"/><rect x="255.5" y="22" width="3" height="16" rx="1.5"/><rect x="262" y="21.5" width="3" height="17" rx="1.5"/><rect x="268.5" y="23" width="3" height="14" rx="1.5"/><rect x="275" y="20" width="3" height="20" rx="1.5"/><rect x="281.5" y="11.5" width="3" height="37" rx="1.5"/><rect x="288" y="14.5" width="3" height="31" rx="1.5"/><rect x="294.5" y="25.5" width="3" height="9" rx="1.5"/></g>
+                            <g class="onda-cheia" clip-path="url(#onda-tocada)"><rect x="2" y="26" width="3" height="8" rx="1.5"/><rect x="8.5" y="15.5" width="3" height="29" rx="1.5"/><rect x="15" y="17.5" width="3" height="25" rx="1.5"/><rect x="21.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="28" y="14.5" width="3" height="31" rx="1.5"/><rect x="34.5" y="18" width="3" height="24" rx="1.5"/><rect x="41" y="21" width="3" height="18" rx="1.5"/><rect x="47.5" y="16" width="3" height="28" rx="1.5"/><rect x="54" y="20" width="3" height="20" rx="1.5"/><rect x="60.5" y="17.5" width="3" height="25" rx="1.5"/><rect x="67" y="13.5" width="3" height="33" rx="1.5"/><rect x="73.5" y="22.5" width="3" height="15" rx="1.5"/><rect x="80" y="17.5" width="3" height="25" rx="1.5"/><rect x="86.5" y="18" width="3" height="24" rx="1.5"/><rect x="93" y="20" width="3" height="20" rx="1.5"/><rect x="99.5" y="14" width="3" height="32" rx="1.5"/><rect x="106" y="15" width="3" height="30" rx="1.5"/><rect x="112.5" y="24" width="3" height="12" rx="1.5"/><rect x="119" y="17.5" width="3" height="25" rx="1.5"/><rect x="125.5" y="20.5" width="3" height="19" rx="1.5"/><rect x="132" y="17.5" width="3" height="25" rx="1.5"/><rect x="138.5" y="12" width="3" height="36" rx="1.5"/><rect x="145" y="19.5" width="3" height="21" rx="1.5"/><rect x="151.5" y="20" width="3" height="20" rx="1.5"/><rect x="158" y="19.5" width="3" height="21" rx="1.5"/><rect x="164.5" y="21" width="3" height="18" rx="1.5"/><rect x="171" y="14" width="3" height="32" rx="1.5"/><rect x="177.5" y="13" width="3" height="34" rx="1.5"/><rect x="184" y="25" width="3" height="10" rx="1.5"/><rect x="190.5" y="19.5" width="3" height="21" rx="1.5"/><rect x="197" y="21.5" width="3" height="17" rx="1.5"/><rect x="203.5" y="18.5" width="3" height="23" rx="1.5"/><rect x="210" y="11.5" width="3" height="37" rx="1.5"/><rect x="216.5" y="16.5" width="3" height="27" rx="1.5"/><rect x="223" y="23" width="3" height="14" rx="1.5"/><rect x="229.5" y="21" width="3" height="18" rx="1.5"/><rect x="236" y="22" width="3" height="16" rx="1.5"/><rect x="242.5" y="14.5" width="3" height="31" rx="1.5"/><rect x="249" y="11.5" width="3" height="37" rx="1.5"/><rect x="255.5" y="22" width="3" height="16" rx="1.5"/><rect x="262" y="21.5" width="3" height="17" rx="1.5"/><rect x="268.5" y="23" width="3" height="14" rx="1.5"/><rect x="275" y="20" width="3" height="20" rx="1.5"/><rect x="281.5" y="11.5" width="3" height="37" rx="1.5"/><rect x="288" y="14.5" width="3" height="31" rx="1.5"/><rect x="294.5" y="25.5" width="3" height="9" rx="1.5"/></g>
+                        </svg>
+                    </div>
+                    <div class="portal-body">
+                        <span class="portal-tag"><i class="fas fa-shoe-prints" aria-hidden="true"></i> Aluno · O passo</span>
+                        <h3>Passaporte de dança</h3>
+                        <p>Quem entra em cena: próxima aula, check-in antecipado, frequência, evolução das notas e financeiro com PIX.</p>
+                        <ul class="portal-notas">
+                            <li><i class="fas fa-id-card" aria-hidden="true"></i> Passaporte</li>
+                            <li><i class="fas fa-calendar-check" aria-hidden="true"></i> Frequência</li>
+                            <li><i class="fas fa-arrow-trend-up" aria-hidden="true"></i> Evolução</li>
+                        </ul>
+                        <button type="button" class="portal-cta" data-entrar="Aluno">Entrar como aluno <i class="fas fa-arrow-right" aria-hidden="true"></i></button>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <footer class="landing-foot faint">VibeDance · gestão de estúdios e companhias de dança</footer>
+    </main>
+
+    <script type="module" src="login.js"></script>
 </body>
 </html>

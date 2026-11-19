@@ -1,9 +1,12 @@
 package com.vibedance.model;
 
+import com.vibedance.realtime.SincronizacaoEntityListener;
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@EntityListeners(SincronizacaoEntityListener.class)
 @Table(name = "comunicados")
 public class Comunicado {
 
@@ -13,7 +16,7 @@ public class Comunicado {
     private Integer id;
 
     @ManyToOne
-    @JoinColumn(name = "id_turma", nullable = false)
+    @JoinColumn(name = "id_turma")
     private Turma turma;
 
     @ManyToOne

@@ -1,10 +1,13 @@
 package com.vibedance.model;
 
+import com.vibedance.realtime.SincronizacaoEntityListener;
+
 import jakarta.persistence.*;
 
 import java.time.LocalTime;
 
 @Entity
+@EntityListeners(SincronizacaoEntityListener.class)
 @Table(name = "turmas")
 public class Turma {
 

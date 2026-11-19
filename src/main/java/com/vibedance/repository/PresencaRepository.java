@@ -25,4 +25,10 @@ public interface PresencaRepository extends JpaRepository<Presenca, Integer> {
     );
 
     List<Presenca> findByTurmaIdIn(List<Integer> idsTurmas);
+
+    List<Presenca> findByAlunoIdAndTurmaIdOrderByDataAulaDesc(Integer idAluno, Integer idTurma);
+
+    List<Presenca> findByDataAulaBetween(LocalDate inicio, LocalDate fim);
+
+    List<Presenca> findByTurmaIdAndDataAulaBetween(Integer idTurma, LocalDate inicio, LocalDate fim);
 }
