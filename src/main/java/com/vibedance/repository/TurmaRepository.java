@@ -24,4 +24,7 @@ public interface TurmaRepository extends JpaRepository<Turma, Integer> {
     @Query("SELECT t FROM Turma t WHERE t.id = :id")
     Optional<Turma> buscarPorIdComBloqueio(@Param("id") Integer id);
 
+    List<Turma> findByAtivoTrueOrderByHorarioAsc();
+
+    List<Turma> findByProfessorIdOrderByHorarioAsc(Integer professorId);
 }

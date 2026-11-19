@@ -1,2373 +1,739 @@
 /**
- * VibeDance Aluno Controller
- * Gerenciador de aulas, playlists interativas, histórico de frequência e matrículas
+ * Portal do Aluno — passaporte digital, agenda com check-in antecipado,
+ * reposições, hub de evolução, avisos e financeiro transparente.
  */
+import { api } from '../js/core/api.js';
+import { criarPortal } from '../js/core/shell.js';
+import { linha, medidor } from '../js/core/charts.js';
+import { planilhaFinanceira } from '../js/core/planilha.js';
+import { abrirCheckout, abrirComprovante } from '../js/core/checkout.js';
+import { telaMural } from '../js/core/mural.js';
+import { rotuloMotivo as rotuloDesconto } from '../js/core/descontos.js';
+import {
+    $, esc, html, raw, moeda, pct, data, dataLonga, dataCurta, dataHora, relativo, avatar, badge, toastOk, toast, modal,
+    confirmar, comBotao, vazio, NIVEIS, isoHoje, heroPalco, DIAS,
+} from '../js/core/ui.js';
 
-let statusAnterioresAulasParticulares = null;
-let intervaloAulasParticulares = null;
+const S = '/api/aluno/portal';
 
-document.addEventListener('DOMContentLoaded', () => {
-    inicializarPainelAluno();
-});
+const SITUACAO_FIN = { EM_DIA: 'Em dia', PENDENTE: 'Mensalidade pendente', ATRASADO: 'Pagamento em atraso', EM_ANALISE: 'Comprovante em análise' };
+const ehHoje = (d) => d === isoHoje();
 
-function inicializarPainelAluno() {
-    const user = window.VibeAuth ? window.VibeAuth.getUser() : null;
-    if (!user) return;
-
-    const botaoSolicitarParticular = document.getElementById('btn-solicitar-particular');
-
-    if (botaoSolicitarParticular) {
-        botaoSolicitarParticular.disabled = false;
-        botaoSolicitarParticular.onclick = solicitarAulaParticular;
-    }
-
-    // Saudação dinâmica
-    const saudacaoEl = document.getElementById('saudacao-texto');
-    if (saudacaoEl && window.VibeUI) {
-        saudacaoEl.textContent = window.VibeUI.getSaudacao();
-    }
-
-    renderizarMinhasAulas(user.id);
-    renderizarFaturasAluno(user.id);
-    renderizarMateriais();
-    renderizarComunicadosAluno();
-    renderizarHistorico(user.id);
-    renderizarTodasTurmas(user.id);
-    renderizarModalidades();
-
-    verificarAtualizacoesAulasParticulares();
-
-    if (intervaloAulasParticulares) {
-        clearInterval(intervaloAulasParticulares);
-    }
-
-    intervaloAulasParticulares = setInterval(
-        verificarAtualizacoesAulasParticulares,
-        30000
-    );
+function rotuloDia(d) {
+    if (ehHoje(d)) return 'Hoje';
+    const amanha = new Date();
+    amanha.setDate(amanha.getDate() + 1);
+    const iso = `${amanha.getFullYear()}-${String(amanha.getMonth() + 1).padStart(2, '0')}-${String(amanha.getDate()).padStart(2, '0')}`;
+    return d === iso ? 'Amanhã' : dataLonga(d);
 }
 
-/**
- * Alterna as abas internas do painel
- */
-function trocarAba(tabId, btnElement) {
-    document.querySelectorAll('.tab-content-panel').forEach(panel => panel.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-
-    const targetPanel = document.getElementById(`tab-${tabId}`);
-    if (targetPanel) targetPanel.classList.add('active');
-
-    if (btnElement) {
-        btnElement.classList.add('active');
-    } else {
-        const correspondingBtn = document.getElementById(`tab-btn-${tabId}`);
-        if (correspondingBtn) correspondingBtn.classList.add('active');
-    }
-
-    if (tabId === 'particulares') {
-        carregarAulasParticulares();
-    }
+async function alternarCheckin(aula, botao) {
+    const corpo = { turmaId: aula.turma.id, data: aula.data };
+    await comBotao(botao, () => api.post(`${S}/checkin${aula.checkin ? '/desfazer' : ''}`, corpo));
+    toastOk(aula.checkin ? 'Check-in desfeito' : 'Presença confirmada', `${aula.turma.nome} · ${rotuloDia(aula.data)} às ${aula.turma.horarioInicio}`);
 }
-window.trocarAba = trocarAba;
 
-async function solicitarAulaParticular() {
+// ======================================================================
+// 1. Passaporte
+// ======================================================================
+async function telaPassaporte(ctx) {
+    const p = await api.get(`${S}/passaporte`);
+    const u = p.usuario;
+    const prox = p.proximaAula;
+    const finCls = { EM_DIA: 'ok', PENDENTE: 'warn', ATRASADO: 'danger', EM_ANALISE: 'info' }[p.situacaoFinanceira];
 
-    const modalidade = document.getElementById('particular-modalidade');
-    const professor = document.getElementById('particular-professor');
-    const dataHora = document.getElementById('particular-datahora');
-    const duracao = document.getElementById('particular-duracao');
-    const observacoes = document.getElementById('particular-observacoes');
-    const botao = document.getElementById('btn-solicitar-particular');
+    ctx.el.innerHTML = html`
+        ${raw(heroPalco({
+            imagem: '../img/hero-aluno.jpg',
+            eyebrow: 'Seu passaporte VibeDance',
+            titulo: 'Olá,',
+            destaque: u.nome.split(' ')[0],
+            texto: prox ? `Sua próxima aula é ${prox.turma.nome}, ${rotuloDia(prox.data).toLowerCase()} às ${prox.turma.horarioInicio}.` : 'Escolha uma turma e comece a dançar. Seu progresso aparece aqui em tempo real.',
+            meta: `<span><i class="fas fa-layer-group"></i> ${p.turmasAtivas} turma(s) ativa(s)</span><span><i class="fas fa-chart-simple"></i> ${pct(p.frequenciaGeral)} de frequência</span>`,
+            acoes: prox ? '<a class="btn btn-primary" href="#/agenda"><i class="fas fa-calendar-days"></i> Ver minha agenda</a><a class="btn" href="#/evolucao"><i class="fas fa-arrow-trend-up"></i> Minha evolução</a>'
+                : '<a class="btn btn-primary" href="#/explorar"><i class="fas fa-compass"></i> Explorar turmas</a>',
+        }))}
+        ${raw(p.alerta ? `<div class="callout ${p.alerta.includes('atraso') || p.alerta.includes('abaixo') ? 'danger' : 'warn'}" style="margin-bottom:16px"><i class="fas fa-triangle-exclamation"></i><span>${esc(p.alerta)}</span></div>` : '')}
 
-    const token = sessionStorage.getItem('vibedance_token');
+        <section class="grid grid-main">
+            <article class="passport">
+                <div class="passport-top">
+                    ${raw(avatar(u, 'lg'))}
+                    <div>
+                        <h2>${u.nome}</h2>
+                        <span class="passport-code">${p.codigo}</span>
+                    </div>
+                </div>
+                <dl class="passport-grid">
+                    <div><dt>Matrícula</dt><dd>${raw(badge(p.statusMatricula))}</dd></div>
+                    <div><dt>Financeiro</dt><dd><span class="badge ${finCls}">${SITUACAO_FIN[p.situacaoFinanceira] || p.situacaoFinanceira}</span></dd></div>
+                    <div><dt>Turmas ativas</dt><dd class="num">${p.turmasAtivas}</dd></div>
+                    <div><dt>Frequência geral</dt><dd class="num">${pct(p.frequenciaGeral)}</dd></div>
+                    <div><dt>Média técnica</dt><dd class="num">${p.mediaAvaliacoes ?? '—'}${p.totalAvaliacoes ? raw(` <small class="faint">(${p.totalAvaliacoes} avaliações)</small>`) : ''}</dd></div>
+                    <div><dt>Em aberto</dt><dd class="num">${moeda(p.valorEmAberto)}</dd></div>
+                </dl>
+            </article>
 
-    if (!token) {
-        window.VibeUI.showToast('Sessão expirada. Faça login novamente.', 'error');
-        return;
-    }
+            <article class="panel">
+                <div class="panel-head"><h3>Próxima aula</h3>${raw(prox ? badge(prox.tipo) : '')}</div>
+                ${raw(prox ? `
+                    <p class="muted">${esc(rotuloDia(prox.data))}</p>
+                    <div class="countdown" style="font-size:2.4rem;margin:4px 0 8px">${esc(prox.turma.horarioInicio)}</div>
+                    <h3>${esc(prox.turma.nome)}</h3>
+                    <p class="muted">${esc(prox.turma.salaNome)} · ${esc(prox.turma.professorNome)}</p>
+                    <div class="mt-5">${prox.checkin
+                        ? `<button class="btn btn-ok btn-block" data-checkin><i class="fas fa-circle-check"></i> Presença confirmada · desfazer</button>`
+                        : prox.podeCheckin ? `<button class="btn btn-primary btn-block" data-checkin><i class="fas fa-hand"></i> Confirmar presença</button>` : '<p class="faint">O check-in abre até 7 dias antes da aula.</p>'}</div>`
+                    : vazio('fa-calendar-plus', 'Nenhuma aula agendada', 'Explore as turmas disponíveis para começar.', '<a class="btn btn-primary" href="#/explorar">Explorar turmas</a>'))}
+            </article>
+        </section>
 
-    const idModalidade = Number(modalidade.value);
-    const idProfessor = Number(professor.value);
-    const minutos = duracao.value ? Number(duracao.value) : 60;
+        <section class="grid grid-main mt-4">
+            <article class="panel">
+                <div class="panel-head"><div><h3>Frequência por turma</h3><span class="muted">Mínimo exigido: 75%. Faltas justificadas não contam.</span></div><a class="btn btn-sm" href="#/frequencia"><i class="fas fa-calendar-days"></i> Calendário completo</a></div>
+                ${raw(p.frequenciaPorTurma.length ? p.frequenciaPorTurma.map((f) => `
+                    <div style="padding:10px 0;border-bottom:1px solid var(--line-soft)">
+                        <div class="row between"><strong>${esc(f.turmaNome)}</strong><span class="row">${badge(f.alerta)}<b class="num">${pct(f.percentual)}</b></span></div>
+                        <div style="margin:8px 0 4px">${medidor(f.percentual)}</div>
+                        <small class="faint num">${f.presentes} presenças · ${f.faltas} faltas · ${f.justificadas} justificadas${f.alerta !== 'OK' ? ' · <a href="#/agenda?repor=' + f.turmaId + '">solicitar reposição</a>' : ''}</small>
+                    </div>`).join('') : vazio('fa-chart-simple', 'Sem turmas ativas'))}
+            </article>
+            <article class="panel">
+                <div class="panel-head"><h3>Próxima cobrança</h3></div>
+                ${raw(p.proximaFatura ? `
+                    <div class="kpi-value num">${moeda(p.proximaFatura.valor)}</div>
+                    <p class="muted">${esc(p.proximaFatura.titulo)}</p>
+                    <p class="num ${p.proximaFatura.diasAtraso ? 'danger' : 'faint'}">Vence em ${data(p.proximaFatura.dataVencimento)}${p.proximaFatura.diasAtraso ? ` · ${p.proximaFatura.diasAtraso} dia(s) em atraso` : ''}</p>
+                    <div class="row mt-4">${badge(p.proximaFatura.status)}<a class="btn btn-sm" href="#/financeiro">Pagar ou enviar comprovante</a></div>`
+                    : vazio('fa-circle-check', 'Tudo em dia', 'Nenhuma cobrança em aberto.'))}
+            </article>
+        </section>`;
 
-    if (!idModalidade || !idProfessor || !dataHora.value) {
-        window.VibeUI.showToast('Preencha todos os campos obrigatórios.', 'error');
-        return;
-    }
+    ctx.el.onclick = (e) => {
+        const b = e.target.closest('[data-checkin]');
+        if (b && prox) alternarCheckin(prox, b);
+    };
+}
 
-    if (!Number.isInteger(minutos) || minutos < 30 || minutos > 180) {
-        window.VibeUI.showToast('A duração deve ser entre 30 e 180 minutos.', 'error');
-        return;
-    }
+// ======================================================================
+// 2. Agenda, check-in e reposições
+// ======================================================================
+async function telaAgenda(ctx) {
+    const [agenda, reposicoes, turmas] = await Promise.all([
+        api.get(`${S}/agenda`), api.get(`${S}/reposicoes`), api.get(`${S}/turmas`),
+    ]);
+    const porDia = agenda.reduce((acc, a) => ((acc[a.data] ||= []).push(a), acc), {});
+    const abertas = reposicoes.filter((r) => ['SOLICITADA', 'APROVADA'].includes(r.status) && r.dataAulaDestino >= isoHoje());
 
-    const textoOriginal = botao.textContent;
+    ctx.el.innerHTML = html`
+        <div class="page-head">
+            <div><h1>Minha agenda</h1><p>Próximos 14 dias. Confirme presença com um toque — seu professor vê na hora.</p></div>
+            <div class="page-actions">
+                <a class="btn btn-ghost" href="#/frequencia"><i class="fas fa-calendar-days"></i> Calendário e frequência</a>
+                <button class="btn" data-acao="experimental"><i class="fas fa-flask"></i> Aula experimental</button>
+                <button class="btn btn-primary" data-acao="repor" ${turmas.length ? '' : 'disabled'}><i class="fas fa-rotate"></i> Solicitar reposição</button>
+            </div>
+        </div>
+        <section class="grid grid-main">
+            <article class="panel">
+                ${raw(Object.keys(porDia).length ? Object.entries(porDia).map(([dia, aulas]) => `
+                    <div class="agenda-day"><h4>${esc(rotuloDia(dia))}</h4>
+                    ${aulas.map((a, i) => `
+                        <div class="agenda-item ${a.checkin ? 'is-checked' : ''}">
+                            <span class="t">${esc(a.turma.horarioInicio)}<small>${esc(a.turma.horarioFim)}</small></span>
+                            <span><strong>${esc(a.turma.nome)}</strong> ${a.tipo !== 'REGULAR' ? badge(a.tipo) : ''}<br><small class="faint">${esc(a.turma.salaNome)} · ${esc(a.turma.professorNome)}</small></span>
+                            <span>${a.presenca ? badge(a.presenca)
+                                : a.checkin ? `<button class="btn btn-sm btn-ok" data-dia="${dia}" data-i="${i}"><i class="fas fa-circle-check"></i> Confirmado</button>`
+                                : a.podeCheckin ? `<button class="btn btn-sm" data-dia="${dia}" data-i="${i}"><i class="fas fa-hand"></i> Confirmar</button>`
+                                : '<span class="faint" style="font-size:.8rem">check-in em breve</span>'}</span>
+                        </div>`).join('')}</div>`).join('') : vazio('fa-calendar', 'Agenda vazia', 'Você ainda não tem aulas nos próximos 14 dias.', '<a class="btn btn-primary" href="#/explorar">Explorar turmas</a>'))}
+            </article>
+            <article class="panel">
+                <div class="panel-head"><h3>Minhas solicitações</h3></div>
+                <div class="feed">${raw(reposicoes.length ? reposicoes.slice(0, 12).map((r) => `
+                    <div class="feed-item">
+                        <header><span>${badge(r.tipo)}</span>${badge(r.status)}</header>
+                        <strong>${esc(r.turmaDestinoNome)}</strong>
+                        <p class="meta num">${esc(dataLonga(r.dataAulaDestino))} · ${esc(r.horario || '')}</p>
+                        ${r.resposta ? `<p class="muted mt-4">Professor: “${esc(r.resposta)}”</p>` : ''}
+                        ${abertas.includes(r) ? `<button class="btn btn-sm btn-ghost mt-4" data-cancelar="${r.id}"><i class="fas fa-xmark"></i> Cancelar solicitação</button>` : ''}
+                    </div>`).join('') : vazio('fa-rotate', 'Nenhuma solicitação', 'Faltou? Peça reposição em outra turma com vaga, de preferência da mesma modalidade.'))}</div>
+            </article>
+        </section>`;
 
-    try {
-        botao.disabled = true;
-        botao.textContent = 'Enviando solicitação...';
+    ctx.el.onclick = async (e) => {
+        const b = e.target.closest('[data-dia]');
+        if (b) return alternarCheckin(porDia[b.dataset.dia][Number(b.dataset.i)], b);
+        if (e.target.closest('[data-acao="repor"]')) return formReposicao('REPOSICAO', turmas);
+        if (e.target.closest('[data-acao="experimental"]')) return formReposicao('EXPERIMENTAL', turmas);
+        const c = e.target.closest('[data-cancelar]');
+        if (c) {
+            const ok = await confirmar({ titulo: 'Cancelar solicitação?', texto: 'A vaga é liberada e o professor é avisado.', confirmar: 'Cancelar solicitação', perigo: true });
+            if (!ok) return undefined;
+            await api.post(`${S}/reposicoes/${c.dataset.cancelar}/cancelar`);
+            toastOk('Solicitação cancelada');
+        }
+        return undefined;
+    };
+    if (ctx.params.repor && !ctx.suave) formReposicao('REPOSICAO', turmas, Number(ctx.params.repor));
+}
 
-        const resposta = await fetch('/api/aluno/aulas-particulares', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
+/** Fluxo estruturado: origem → horário compatível → confirmação. */
+function formReposicao(tipo, turmas, origemInicial) {
+    const experimental = tipo === 'EXPERIMENTAL';
+    let opcoes = [];
+    modal({
+        titulo: experimental ? 'Agendar aula experimental' : 'Solicitar reposição',
+        subtitulo: experimental ? 'Experimente uma turma em que você ainda não está matriculado(a).' : 'Primeiro as turmas da mesma modalidade; depois, outras turmas com vaga.',
+        confirmar: 'Enviar solicitação',
+        largo: true,
+        etapas: [
+            {
+                titulo: experimental ? 'Interesse' : 'Aula perdida',
+                html: experimental
+                    ? '<p class="muted">Vamos listar todas as turmas abertas com vaga nas próximas duas semanas.</p>'
+                    : `<div class="form-grid">
+                        <div class="field"><label for="rp-origem">Sua turma</label><select class="input" id="rp-origem" name="turmaOrigemId" required>${turmas.map((t) => `<option value="${t.id}" ${t.id === origemInicial ? 'selected' : ''}>${esc(t.nome)}</option>`).join('')}</select></div>
+                        <div class="field"><label for="rp-falta">Data da falta</label><input class="input num" type="date" id="rp-falta" name="dataFalta" max="${isoHoje()}"><span class="hint">Opcional, ajuda o professor a entender o contexto.</span></div>
+                    </div>`,
+                validar: async (form, m) => {
+                    const origem = experimental ? null : form.turmaOrigemId.value;
+                    opcoes = await api.get(`${S}/reposicoes/opcoes`, { query: { tipo, turmaOrigem: origem }, silencioso: true });
+                    const box = form.querySelector('#rp-opcoes');
+                    box.innerHTML = opcoes.length ? opcoes.map((o, i) => `
+                        <div class="feed-item">
+                            <header><div><strong>${esc(o.turma.nome)}</strong> <span class="faint">· ${esc(NIVEIS[o.turma.nivel] || '')}</span>${experimental ? '' : o.mesmaModalidade ? ' <span class="badge ok plain">Mesma modalidade</span>' : ' <span class="badge info plain">Outra modalidade</span>'}</div><span class="faint num">${o.vagas} vaga(s)</span></header>
+                            <p class="meta">${esc(o.turma.diasSemana)} · ${esc(o.turma.horarioInicio)}–${esc(o.turma.horarioFim)} · ${esc(o.turma.salaNome)} · ${esc(o.turma.professorNome)}</p>
+                            <div class="row wrap mt-4">${o.datas.map((d) => `<label class="check-item" style="padding:6px 10px"><input type="radio" name="escolha" value="${i}|${d}" required><span class="num">${esc(dataCurta(d))}</span></label>`).join('')}</div>
+                        </div>`).join('') : '';
+                    if (!opcoes.length) return experimental ? 'Não há turmas com vaga nas próximas duas semanas.' : 'Nenhum horário compatível com vaga nas próximas duas semanas.';
+                    m.erro(null);
+                    return true;
+                },
             },
-            body: JSON.stringify({
-                idModalidade: idModalidade,
-                idProfessor: idProfessor,
-                dataHora: dataHora.value + ':00',
-                duracaoMinutos: minutos,
-                observacoes: observacoes.value.trim()
-            })
-        });
-
-        const resultado = await resposta.json().catch(() => ({}));
-
-        if (!resposta.ok) {
-            throw new Error(
-                resultado.erro || 'Não foi possível solicitar a aula.'
-            );
-        }
-
-        window.VibeUI.showToast(
-            'Aula particular solicitada com sucesso!',
-            'sucess'
-        );
-
-        modalidade.value = '';
-        professor.value = '';
-        dataHora.value = '';
-        duracao.value = '60';
-        observacoes.value = '';
-
-        await carregarAulasParticulares();
-
-    } catch (erro) {
-        console.error('Erro ao solicitar aula particular:', erro);
-
-        window.VibeUI.showToast(
-            erro.message || 'Erro ao enviar solicitação.',
-            'error'
-        );
-
-    } finally {
-        botao.disabled = false;
-        botao.textContent = textoOriginal;
-    }
+            {
+                titulo: 'Horário',
+                html: '<div class="feed" id="rp-opcoes"></div>',
+                validar: (form) => (form.querySelector('input[name=escolha]:checked') ? true : 'Escolha uma data.'),
+            },
+            {
+                titulo: 'Confirmação',
+                html: '<div id="rp-resumo"></div><div class="field mt-4"><label for="rp-motivo">Mensagem ao professor</label><textarea class="input" id="rp-motivo" name="motivo" rows="3" placeholder="Opcional"></textarea></div>',
+            },
+        ],
+        onAbrir: (form) => form.addEventListener('change', () => {
+            const sel = form.querySelector('input[name=escolha]:checked');
+            if (!sel) return;
+            const [i, d] = sel.value.split('|');
+            const o = opcoes[Number(i)];
+            form.querySelector('#rp-resumo').innerHTML = `<dl class="kv"><dt>Turma</dt><dd>${esc(o.turma.nome)}</dd><dt>Data</dt><dd class="num">${esc(dataLonga(d))}, ${esc(o.turma.horarioInicio)}</dd><dt>Sala</dt><dd>${esc(o.turma.salaNome)}</dd><dt>Professor</dt><dd>${esc(o.turma.professorNome)}</dd></dl><div class="callout mt-4"><i class="fas fa-circle-info"></i><span>O professor precisa aprovar. Você recebe a resposta no sininho.</span></div>`;
+        }),
+        onSubmit: async (dados, form) => {
+            const [i, d] = form.querySelector('input[name=escolha]:checked').value.split('|');
+            const o = opcoes[Number(i)];
+            await api.post(`${S}/reposicoes`, {
+                tipo,
+                turmaOrigemId: experimental ? null : Number(form.turmaOrigemId.value),
+                dataFalta: experimental ? null : form.dataFalta.value || null,
+                turmaDestinoId: o.turma.id,
+                dataAulaDestino: d,
+                motivo: dados.motivo || null,
+            }, { silencioso: true });
+            toastOk('Solicitação enviada', `${o.turma.nome} · ${dataCurta(d)}. Aguarde a aprovação do professor.`);
+        },
+    });
 }
 
-async function carregarAulasParticulares() {
-    const container = document.getElementById('container-aulas-particulares');
+// ======================================================================
+// 3. Explorar turmas (auto-matrícula)
+// ======================================================================
+async function telaExplorar(ctx) {
+    const [catalogo, minhas] = await Promise.all([api.get(`${S}/catalogo`), api.get(`${S}/turmas`)]);
+    const ids = new Set(minhas.map((t) => t.id));
+    const categorias = [...new Set(catalogo.map((t) => t.categoria).filter(Boolean))];
+    const filtro = ctx.params.categoria || '';
+    const lista = catalogo.filter((t) => !filtro || t.categoria === filtro);
 
-    if (!container) return;
+    ctx.el.innerHTML = html`
+        <div class="page-head"><div><h1>Explorar turmas</h1><p>Vagas atualizadas em tempo real. Matricule-se em um toque.</p></div>
+            <div class="segmented">${raw(['', ...categorias].map((c) => `<button data-cat="${esc(c)}" class="${filtro === c ? 'is-active' : ''}">${esc(c || 'Todas')}</button>`).join(''))}</div></div>
+        <div class="grid grid-3">${raw(lista.map((t) => {
+            const vagas = t.limiteVagas - t.ocupadas;
+            return `<div class="data-card">
+                <div class="row between"><i class="fas ${esc(t.modalidadeIcone || 'fa-music')}" style="color:var(--amber);font-size:1.2rem"></i>${ids.has(t.id) ? badge('ATIVA', 'Você participa') : vagas <= 0 ? badge('VENCIDO', 'Lotada') : `<span class="badge ${vagas <= 3 ? 'warn' : 'ok'}">${vagas} vaga(s)</span>`}</div>
+                <div><h3>${esc(t.nome)}</h3><p class="muted">${esc(t.modalidadeNome)} · ${esc(NIVEIS[t.nivel] || t.nivel)}</p></div>
+                <p class="num">${esc(t.diasSemana)} · ${esc(t.horarioInicio)}–${esc(t.horarioFim)}</p>
+                <p class="faint">${esc(t.salaNome)} · ${esc(t.professorNome)}</p>
+                ${ids.has(t.id) ? '' : `<button class="btn ${vagas > 0 ? 'btn-primary' : ''}" data-matricular="${t.id}" ${vagas > 0 ? '' : 'disabled'}>${vagas > 0 ? 'Matricular-me' : 'Sem vagas'}</button>`}
+            </div>`;
+        }).join('') || vazio('fa-magnifying-glass', 'Nenhuma turma nesta categoria'))}</div>`;
 
-    container.textContent = 'Carregando agendamentos...';
+    ctx.el.onclick = async (e) => {
+        const c = e.target.closest('[data-cat]');
+        if (c) return ctx.navegar(`#/explorar${c.dataset.cat ? `?categoria=${encodeURIComponent(c.dataset.cat)}` : ''}`);
+        const m = e.target.closest('[data-matricular]');
+        if (m) {
+            const t = catalogo.find((x) => String(x.id) === m.dataset.matricular);
+            const ok = await confirmar({ titulo: `Matricular-se em ${t.nome}?`, texto: `${t.diasSemana} às ${t.horarioInicio}. A mensalidade é gerada pela administração no próximo ciclo.`, confirmar: 'Confirmar matrícula' });
+            if (!ok) return undefined;
+            await comBotao(m, () => api.post(`${S}/matriculas`, { idTurma: t.id }));
+            toastOk('Matrícula confirmada', `Bem-vindo(a) à ${t.nome}!`);
+        }
+        return undefined;
+    };
+}
 
-    const token = sessionStorage.getItem('vibedance_token');
+// ======================================================================
+// 4. Hub de evolução
+// ======================================================================
+async function telaEvolucao(ctx) {
+    const ev = await api.get(`${S}/evolucao`);
+    const aba = ctx.params.aba || 'avaliacoes';
+    ctx.el.innerHTML = html`
+        <div class="page-head"><div><h1>Minha evolução</h1><p>Feedbacks técnicos, repertório estudado e histórico de presença.</p></div></div>
+        <section class="grid grid-main">
+            <article class="panel">
+                <div class="panel-head"><div><h3>Média técnica ao longo do tempo</h3><span class="muted">Ritmo, técnica, expressão e coreografia (0–10)</span></div><span class="kpi-value num">${ev.mediaGeral ?? '—'}</span></div>
+                ${raw(ev.evolucaoNotas.length ? linha(ev.evolucaoNotas.map((p) => ({ rotulo: p.rotulo, valor: Number(p.valor) })), { formato: (v) => v.toFixed(1) }) : vazio('fa-chart-line', 'Ainda sem avaliações', 'Seu professor registra avaliações técnicas ao longo do semestre.'))}
+            </article>
+            <article class="panel">
+                <div class="panel-head"><h3>Resumo</h3></div>
+                <dl class="kv">
+                    <dt>Avaliações</dt><dd class="num">${ev.avaliacoes.length}</dd>
+                    <dt>Coreografias</dt><dd class="num">${new Set(ev.coreografias.filter((c) => c.coreografia).map((c) => c.coreografia)).size}</dd>
+                    <dt>Aulas registradas</dt><dd class="num">${ev.presencas.length}</dd>
+                    <dt>Presenças</dt><dd class="num">${ev.presencas.filter((p) => p.status === 'PRESENTE').length}</dd>
+                </dl>
+            </article>
+        </section>
+        <div class="panel mt-4">
+            <div class="tabs" role="tablist">
+                <button data-aba="avaliacoes" class="${aba === 'avaliacoes' ? 'is-active' : ''}">Feedbacks</button>
+                <button data-aba="repertorio" class="${aba === 'repertorio' ? 'is-active' : ''}">Repertório</button>
+                <button data-aba="presencas" class="${aba === 'presencas' ? 'is-active' : ''}">Presenças</button>
+            </div>
+            <div id="ev-conteudo"></div>
+        </div>`;
 
-    if (!token) {
-        container.textContent = 'Sessão expirada. Faça login novamente.';
-        return;
+    const alvo = document.getElementById('ev-conteudo');
+    if (aba === 'avaliacoes') {
+        alvo.innerHTML = ev.avaliacoes.length ? `<div class="timeline">${ev.avaliacoes.map((a) => `
+            <div class="tl-item is-next"><div class="feed-item">
+                <header><div><strong>${esc(a.coreografia)}</strong><br><small class="faint">${esc(a.turmaNome)} · ${esc(a.professorNome)} · ${dataHora(a.data)}</small></div><span class="badge cyan plain num">média ${a.media}</span></header>
+                <div class="score-grid">${[['Ritmo', a.ritmo], ['Técnica', a.tecnica], ['Expressão', a.expressao], ['Coreografia', a.coreografiaNota]].map(([l, v]) => `<div class="score"><b>${v}</b><small>${l}</small></div>`).join('')}</div>
+                <p style="white-space:pre-line">${esc(a.feedback)}</p>
+                ${a.link ? `<p class="meta mt-4"><a href="${esc(a.link)}" target="_blank" rel="noopener"><i class="fas fa-play"></i> Referência do professor</a></p>` : ''}
+            </div></div>`).join('')}</div>` : vazio('fa-star-half-stroke', 'Nenhum feedback ainda');
+    } else if (aba === 'repertorio') {
+        alvo.innerHTML = ev.coreografias.length ? `<div class="feed">${ev.coreografias.map((d) => `
+            <div class="feed-item"><header><div><strong>${esc(d.coreografia || 'Aula')}</strong> <span class="faint">· ${esc(d.turmaNome)}</span></div><span class="faint num">${dataCurta(d.data)}</span></header>
+            <p class="muted" style="white-space:pre-line">${esc(d.conteudo)}</p>
+            ${d.links.length ? `<p class="meta mt-4">${d.links.map((l) => `<a href="${esc(l)}" target="_blank" rel="noopener"><i class="fas fa-link"></i> ${esc(l.replace(/^https?:\/\//, '').slice(0, 42))}</a>`).join(' · ')}</p>` : ''}</div>`).join('')}</div>` : vazio('fa-music', 'Repertório vazio', 'O conteúdo de cada aula registrado pelo professor aparece aqui.');
+    } else {
+        alvo.innerHTML = ev.presencas.length ? `<ul class="list-plain">${ev.presencas.map((p) => `<li><span class="num" style="width:110px">${data(p.data)}</span><span style="flex:1">${esc(p.turmaNome)}${p.justificativa ? `<br><small class="faint">${esc(p.justificativa)}</small>` : ''}</span>${badge(p.status)}</li>`).join('')}</ul>` : vazio('fa-clipboard', 'Sem registros de presença');
     }
+    ctx.el.querySelector('.tabs').onclick = (e) => {
+        const b = e.target.closest('[data-aba]');
+        if (b) ctx.navegar(`#/evolucao?aba=${b.dataset.aba}`);
+    };
+}
 
-    try {
-        const resposta = await fetch('/api/aluno/aulas-particulares', {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        });
+// ======================================================================
+// 4b. Frequência e calendário completo
+// ======================================================================
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const ST_AULA = {
+    PRESENTE: ['ok', 'Presente', 'fa-check'], FALTA: ['danger', 'Falta', 'fa-xmark'], JUSTIFICADO: ['warn', 'Justificada', 'fa-file-medical'],
+    AGENDADA: ['next', 'Agendada', 'fa-clock'], SEM_REGISTRO: ['none', 'Sem chamada', 'fa-minus'],
+};
+const nomeMes = (ym) => { const [a, m] = ym.split('-').map(Number); return `${MESES[m - 1]} de ${a}`; };
+const isoDe = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-        if (!resposta.ok) {
-            throw new Error('Erro ao consultar agendamentos.');
+/** Anel de frequência: proporção de presenças, justificadas e faltas sobre as aulas com chamada. */
+function anelFrequencia(r) {
+    const C = 2 * Math.PI * 54;
+    const partes = [['ok', r.presentes], ['warn', r.justificadas], ['danger', r.faltas]];
+    const total = r.aulas || 0;
+    let acc = 0;
+    const arcos = total ? partes.map(([cls, v]) => {
+        const f = v / total;
+        const s = `<circle class="ring-seg ${cls}" cx="70" cy="70" r="54" stroke-dasharray="${Math.max(0, f * C - (f > 0 && f < 1 ? 2.5 : 0))} ${C}" stroke-dashoffset="${-acc * C}"/>`;
+        acc += f;
+        return v ? s : '';
+    }).join('') : '';
+    const cls = r.percentualPresenca >= 85 ? 'ok' : r.percentualPresenca >= 75 ? 'warn' : 'danger';
+    return `<div class="freq-ring">
+        <svg viewBox="0 0 140 140" role="img" aria-label="Frequência de ${pct(r.percentualPresenca)}"><circle class="ring-base" cx="70" cy="70" r="54"/><g transform="rotate(-90 70 70)">${arcos}</g></svg>
+        <div class="freq-ring-centro"><b class="num ${total ? cls : ''}">${total ? pct(r.percentualPresenca, 0) : '—'}</b><small>frequência</small></div>
+    </div>`;
+}
+
+function blocoResumo(r, rotulo) {
+    return `
+        ${anelFrequencia(r)}
+        <div class="freq-stats">
+            <div class="freq-stat ok"><span><i class="fas fa-check"></i> Presenças</span><b class="num">${r.presentes}</b><small>${pct(r.participacaoPresentes, 0)} das aulas</small></div>
+            <div class="freq-stat danger"><span><i class="fas fa-xmark"></i> Faltas</span><b class="num">${r.faltas}</b><small>${pct(r.percentualFaltas, 0)} de ausência</small></div>
+            <div class="freq-stat warn"><span><i class="fas fa-file-medical"></i> Justificadas</span><b class="num">${r.justificadas}</b><small>abonadas pelo professor</small></div>
+            <div class="freq-stat"><span><i class="fas fa-calendar-check"></i> Aulas com chamada</span><b class="num">${r.aulas}</b><small>${esc(rotulo)}</small></div>
+        </div>`;
+}
+
+async function telaFrequencia(ctx) {
+    const f = await api.get(`${S}/frequencia`, { query: { mes: ctx.params.mes } });
+    const porDia = Object.fromEntries(f.dias.map((d) => [d.data, d.aulas]));
+    const hoje = isoHoje();
+    const [ano, mes] = f.mes.split('-').map(Number);
+    const primeiro = new Date(ano, mes - 1, 1);
+    const inicio = new Date(primeiro);
+    inicio.setDate(1 - ((primeiro.getDay() + 6) % 7)); // começa na segunda-feira
+    const celulas = [];
+    for (let d = new Date(inicio); celulas.length < 42; d.setDate(d.getDate() + 1)) {
+        celulas.push(isoDe(d));
+        if (celulas.length >= 35 && d.getMonth() !== mes - 1 && d.getDay() === 0) break;
+    }
+    let selecionado = ctx.params.dia && porDia[ctx.params.dia] ? ctx.params.dia
+        : hoje.startsWith(f.mes) ? hoje : (f.dias[0]?.data || `${f.mes}-01`);
+    let escopo = 'mes';
+
+    ctx.el.innerHTML = html`
+        <div class="page-head">
+            <div><h1>Frequência e calendário</h1><p>Todas as suas aulas: presenças, faltas e faltas justificadas pelo professor. O mínimo exigido é 75%; justificadas não entram na conta.</p></div>
+            <div class="month-nav">
+                <button class="btn btn-ghost btn-sm" data-mes="${f.mesAnterior}" aria-label="Mês anterior"><i class="fas fa-chevron-left"></i></button>
+                <strong>${nomeMes(f.mes)}</strong>
+                <button class="btn btn-ghost btn-sm" data-mes="${f.mesSeguinte}" aria-label="Próximo mês"><i class="fas fa-chevron-right"></i></button>
+                ${raw(f.mes !== hoje.slice(0, 7) ? `<button class="btn btn-sm" data-mes="${hoje.slice(0, 7)}">Hoje</button>` : '')}
+            </div>
+        </div>
+
+        <section class="panel freq-hero">
+            <div class="panel-head">
+                <div><h3>Resumo de presença</h3><span class="muted">${f.sequenciaPresencas ? `${f.sequenciaPresencas} presença(s) seguidas, continue assim!` : 'Cada presença conta para o seu passaporte.'}</span></div>
+                <div class="segmented" id="fq-escopo"><button data-e="mes" class="is-active">${MESES[mes - 1].replace(/^./, (c) => c.toUpperCase())}</button><button data-e="geral">Desde a matrícula</button></div>
+            </div>
+            <div class="freq-resumo" id="fq-resumo">${raw(blocoResumo(f.doMes, `em ${MESES[mes - 1]}`))}</div>
+        </section>
+
+        <section class="grid grid-main mt-4">
+            <article class="panel">
+                <div class="panel-head"><div><h3>Calendário</h3><span class="muted">Toque em um dia para ver as aulas.</span></div>
+                    <ul class="cal-legenda">${raw(['PRESENTE', 'FALTA', 'JUSTIFICADO', 'AGENDADA', 'SEM_REGISTRO'].map((s) => `<li><i class="cal-dot ${ST_AULA[s][0]}"></i>${ST_AULA[s][1]}</li>`).join(''))}</ul>
+                </div>
+                <div class="cal" role="grid" aria-label="Calendário de ${nomeMes(f.mes)}">
+                    ${raw(DIAS.map((d) => `<span class="cal-dow" role="columnheader">${d}</span>`).join(''))}
+                    ${raw(celulas.map((iso) => {
+                        const aulas = porDia[iso] || [];
+                        const fora = !iso.startsWith(f.mes);
+                        return `<button type="button" class="cal-dia ${fora ? 'is-fora' : ''} ${iso === hoje ? 'is-hoje' : ''} ${aulas.length ? 'tem-aula' : ''}" data-dia="${iso}" ${fora ? 'tabindex="-1"' : ''} aria-label="${esc(dataLonga(iso))}: ${aulas.length} aula(s)">
+                            <span class="cal-num num">${Number(iso.slice(8))}</span>
+                            <span class="cal-dots">${aulas.map((a) => `<i class="cal-dot ${ST_AULA[a.status]?.[0] || 'none'}" title="${esc(a.turmaNome)} · ${esc(ST_AULA[a.status]?.[1] || a.status)}"></i>`).join('')}</span>
+                        </button>`;
+                    }).join(''))}
+                </div>
+            </article>
+            <article class="panel" id="fq-dia"></article>
+        </section>
+
+        <section class="grid grid-main mt-4">
+            <article class="panel">
+                <div class="panel-head"><div><h3>Por turma</h3><span class="muted">Desde a matrícula em cada turma ativa.</span></div></div>
+                ${raw(f.porTurma.length ? f.porTurma.map((t) => {
+                    const tot = t.presentes + t.faltas + t.justificadas || 1;
+                    return `<div class="freq-turma">
+                        <div class="row between"><strong>${esc(t.turmaNome)}</strong><span class="row">${badge(t.alerta)}<b class="num">${pct(t.percentual, 0)}</b></span></div>
+                        <div class="freq-barra" aria-hidden="true"><span class="ok" style="width:${(t.presentes / tot) * 100}%"></span><span class="warn" style="width:${(t.justificadas / tot) * 100}%"></span><span class="danger" style="width:${(t.faltas / tot) * 100}%"></span></div>
+                        <small class="faint num">${t.presentes} presença(s) · ${t.faltas} falta(s) · ${t.justificadas} justificada(s)${t.alerta !== 'OK' ? ' · <a href="#/agenda?repor=' + t.turmaId + '">solicitar reposição</a>' : ''}</small>
+                    </div>`;
+                }).join('') : vazio('fa-layer-group', 'Sem turmas ativas', 'Explore as turmas para começar.'))}
+            </article>
+            <article class="panel">
+                <div class="panel-head"><div><h3>Faltas e justificativas</h3><span class="muted">Registradas pelos professores na chamada.</span></div></div>
+                ${raw(f.ausencias.length ? `<ul class="abs-list">${f.ausencias.map((a) => `
+                    <li class="${a.status === 'JUSTIFICADO' ? 'is-just' : 'is-falta'}">
+                        <span class="abs-data"><b class="num">${a.data.slice(8)}</b><small>${MESES[Number(a.data.slice(5, 7)) - 1].slice(0, 3)}</small></span>
+                        <div><strong>${esc(a.turmaNome)}</strong> ${badge(a.status, a.status === 'JUSTIFICADO' ? 'Justificada' : 'Falta')}
+                            <small class="faint">${esc(a.professorNome || '')} · ${esc(dataLonga(a.data))}</small>
+                            ${a.justificativa ? `<p class="abs-motivo"><i class="fas fa-quote-left"></i> ${esc(a.justificativa)}</p>` : ''}
+                        </div>
+                    </li>`).join('')}</ul>` : vazio('fa-face-smile', 'Nenhuma falta registrada', 'Presença impecável até aqui.'))}
+            </article>
+        </section>`;
+
+    const pintarDia = () => {
+        ctx.el.querySelectorAll('.cal-dia').forEach((b) => b.classList.toggle('is-sel', b.dataset.dia === selecionado));
+        const aulas = porDia[selecionado] || [];
+        $('#fq-dia', ctx.el).innerHTML = `
+            <div class="panel-head"><div><h3>${esc(rotuloDia(selecionado))}</h3><span class="muted">${aulas.length ? `${aulas.length} aula(s)` : 'Sem aulas neste dia'}</span></div></div>
+            ${aulas.length ? `<div class="dia-aulas">${aulas.map((a) => {
+                const [cls, rot, ico] = ST_AULA[a.status] || ['none', a.status, 'fa-minus'];
+                return `<div class="dia-aula ${cls}">
+                    <span class="dia-aula-ico"><i class="fas ${ico}"></i></span>
+                    <div><strong>${esc(a.turmaNome)}</strong> ${a.tipo !== 'REGULAR' ? badge(a.tipo) : ''}
+                        <small class="faint num">${esc(a.horarioInicio || '')}–${esc(a.horarioFim || '')} · ${esc(a.salaNome || '')} · ${esc(a.professorNome || '')}</small>
+                        ${a.justificativa ? `<p class="abs-motivo"><i class="fas fa-quote-left"></i> ${esc(a.justificativa)}</p>` : ''}
+                        ${a.status === 'AGENDADA' && a.checkin ? '<small class="ok"><i class="fas fa-circle-check"></i> Presença confirmada</small>' : ''}
+                    </div>
+                    <span class="dia-aula-st ${cls}">${esc(rot)}</span>
+                </div>`;
+            }).join('')}</div>` : vazio('fa-mug-hot', 'Dia livre', 'Nenhuma aula sua neste dia.')}`;
+    };
+    pintarDia();
+
+    ctx.el.onclick = (e) => {
+        const m = e.target.closest('[data-mes]');
+        if (m) return ctx.navegar(`#/frequencia?mes=${m.dataset.mes}`);
+        const d = e.target.closest('.cal-dia');
+        if (d) {
+            if (!d.dataset.dia.startsWith(f.mes)) return ctx.navegar(`#/frequencia?mes=${d.dataset.dia.slice(0, 7)}&dia=${d.dataset.dia}`);
+            selecionado = d.dataset.dia;
+            pintarDia();
+            return undefined;
         }
-
-        const aulas = await resposta.json();
-
-        const [resModalidades, resProfessores] = await Promise.all([
-            fetch('/api/modalidades'),
-            fetch('/api/aluno/professores', {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            })
-        ]);
-
-        if (!resModalidades.ok || !resProfessores.ok) {
-            throw new Error('Não foi possivel consultar modalidades ou professores.');
+        const s = e.target.closest('#fq-escopo [data-e]');
+        if (s && s.dataset.e !== escopo) {
+            escopo = s.dataset.e;
+            ctx.el.querySelectorAll('#fq-escopo button').forEach((b) => b.classList.toggle('is-active', b === s));
+            $('#fq-resumo', ctx.el).innerHTML = escopo === 'mes' ? blocoResumo(f.doMes, `em ${MESES[mes - 1]}`) : blocoResumo(f.geral, 'desde a matrícula');
         }
+        return undefined;
+    };
+}
 
-        const modalidades = await resModalidades.json();
-        const professores = await resProfessores.json();
+// ======================================================================
+// 5. Avisos
+// ======================================================================
+const telaAvisos = (ctx) => telaMural(ctx, { endpoint: `${S}/avisos`, descricao: 'Comunicados do estúdio e das suas turmas, em tempo real.' });
 
-        //Preenche as modalidades disponiveis
-        const selectModalidade = document.getElementById('particular-modalidade');
+// ======================================================================
+// 6. Financeiro
+// ======================================================================
+async function telaFinanceiro(ctx) {
+    const [f, linhas] = await Promise.all([api.get(`${S}/financeiro`), api.get(`${S}/financeiro/planilha`)]);
+    const r = f.resumo;
+    const abertas = f.faturas.filter((x) => ['PENDENTE', 'VENCIDO', 'EM_ANALISE'].includes(x.status))
+        .sort((a, b) => String(a.dataVencimento).localeCompare(String(b.dataVencimento)));
+    ctx.el.innerHTML = html`
+        <div class="page-head"><div><h1>Financeiro</h1><p>Pague por PIX, cartão ou boleto e acompanhe tudo na sua planilha. Baixas da administração aparecem aqui na hora.</p></div></div>
+        <section class="grid grid-4">
+            <div class="data-card kpi ${r.atrasadas ? '' : 'is-hero'}"><span class="kpi-label"><i class="fas fa-hourglass-half"></i> Em aberto</span><span class="kpi-value num">${moeda(r.emAberto)}</span></div>
+            <div class="data-card kpi"><span class="kpi-label"><i class="fas fa-triangle-exclamation"></i> Atrasadas</span><span class="kpi-value num ${r.atrasadas ? 'danger' : ''}">${r.atrasadas}</span></div>
+            <div class="data-card kpi"><span class="kpi-label"><i class="fas fa-receipt"></i> Em análise</span><span class="kpi-value num">${r.emAnalise}</span></div>
+            <div class="data-card kpi"><span class="kpi-label"><i class="fas fa-circle-check"></i> Pago no ano</span><span class="kpi-value num">${moeda(r.pagoNoAno)}</span></div>
+        </section>
 
-        if (selectModalidade) {
-            selectModalidade.replaceChildren(
-                new Option('Selecione uma modalidade', '')
-            );
+        <section class="mt-4">
+            <div class="section-head"><h2>A pagar</h2><span class="muted">${abertas.length ? `${abertas.length} cobrança(s) em aberto` : 'Nada pendente'}</span></div>
+            ${raw(abertas.length ? `<div class="bill-grid">${abertas.map((x) => `
+                <article class="bill ${x.status === 'VENCIDO' ? 'is-late' : ''}">
+                    <header><span class="eyebrow">${esc(x.turmaNome || 'Mensalidade')}</span>${badge(x.status)}</header>
+                    <h3>${esc(x.titulo)}</h3>
+                    <div class="bill-valor num">${moeda(x.valor)}</div>
+                    ${Number(x.desconto) > 0 ? `<p class="bill-desc"><i class="fas fa-tag" aria-hidden="true"></i><s class="num">${moeda(x.valorOriginal)}</s> ${esc(rotuloDesconto(x.motivoDesconto))}</p>` : ''}
+                    <p class="faint num">Vence em ${data(x.dataVencimento)}${x.diasAtraso ? ` · <span class="danger">${x.diasAtraso} dia(s) em atraso</span>` : ''}</p>
+                    ${x.status === 'EM_ANALISE'
+                        ? '<p class="bill-nota"><i class="fas fa-hourglass-half"></i> Comprovante em análise pela administração.</p>'
+                        : `<button class="btn btn-primary btn-block" data-pagar="${x.id}"><i class="fas fa-lock"></i> Pagar agora</button>`}
+                </article>`).join('')}</div>`
+                : `<div class="panel">${vazio('fa-circle-check', 'Tudo em dia', 'Você não tem mensalidades em aberto. Obrigado!')}</div>`)}
+        </section>
 
-            modalidades.forEach(modalidade => {
-                selectModalidade.add(
-                    new Option(modalidade.nome, modalidade.id)
-                );
-            });
-        }
+        <section class="panel flush mt-4">
+            <div class="panel-head"><div><h3>Planilha financeira</h3><span class="muted">Todas as suas cobranças e pagamentos. Clique em um pagamento para ver o comprovante.</span></div></div>
+            <div id="planilha"></div>
+        </section>`;
 
-        // Preenche os professores conforme a modalidade escolhida
-        const selectProfessor = document.getElementById('particular-professor');
+    planilhaFinanceira($('#planilha', ctx.el), linhas, {
+        nomeArquivo: 'meu-extrato-vibedance',
+        pdfUrl: `${S}/financeiro/planilha/pdf`,
+        onLinha: (l) => {
+            if (l.status === 'PAGO' && l.pagamentoId) abrirComprovante(l.pagamentoId);
+            else if (['PENDENTE', 'ATRASADO'].includes(l.status)) abrirCheckout(l.faturaId, { aoPagar: () => ctx.recarregar(), aoEnviarComprovante: enviarComprovante });
+        },
+    });
 
-        if (selectProfessor && selectModalidade) {
+    ctx.el.onclick = (e) => {
+        const p = e.target.closest('[data-pagar]');
+        if (p) return abrirCheckout(Number(p.dataset.pagar), { aoPagar: () => ctx.recarregar(), aoEnviarComprovante: enviarComprovante });
+        return undefined;
+    };
+    if (ctx.params.pagar && !ctx.suave) abrirCheckout(Number(ctx.params.pagar), { aoPagar: () => ctx.recarregar(), aoEnviarComprovante: enviarComprovante });
+}
 
-            selectProfessor.disabled = true;
-            selectProfessor.replaceChildren(
-                new Option('Selecione uma modalidade primeiro', '')
-            );
-
-            selectModalidade.onchange = async () => {
-
-                const idModalidade = selectModalidade.value;
-
-                selectProfessor.disabled = true;
-                selectProfessor.replaceChildren(
-                    new Option('Carregando professores...', '')
-                );
-
-                if (!idModalidade) {
-                    selectProfessor.replaceChildren(
-                        new Option('Selecione uma modalidade primeiro', '')
-                    );
-                    return;
-                }
-
+function enviarComprovante(f) {
+    modal({
+        titulo: 'Enviar comprovante',
+        subtitulo: `${f.titulo} · ${moeda(f.valor)}`,
+        confirmar: 'Enviar comprovante',
+        etapas: [
+            {
+                titulo: 'PIX',
+                html: `<p class="muted">Copie o código abaixo no app do seu banco.</p>
+                    <div class="field mt-4"><label for="pg-pix">PIX copia e cola</label><textarea class="input num" id="pg-pix" rows="4" readonly style="font-size:.75rem">${esc(f.pixCopiaCola || 'Código PIX indisponível — fale com a recepção.')}</textarea></div>
+                    <button type="button" class="btn btn-sm mt-4" id="pg-copiar" ${f.pixCopiaCola ? '' : 'disabled'}><i class="fas fa-copy"></i> Copiar código</button>`,
+            },
+            {
+                titulo: 'Comprovante',
+                html: `<div class="field"><label for="pg-arq">Arquivo do comprovante</label><input class="input" type="file" id="pg-arq" name="arquivo" accept="image/*,application/pdf" required><span class="hint">PDF ou imagem de até 5 MB.</span></div>
+                    <div class="field mt-4"><label for="pg-obs">Observação</label><input class="input" id="pg-obs" name="observacao" placeholder="Opcional"></div>`,
+            },
+        ],
+        onAbrir: (form) => {
+            form.querySelector('#pg-copiar').onclick = async () => {
                 try {
-                    const respostaTurmas = await fetch(
-                        `/api/turmas/modalidade/${idModalidade}`
-                    );
-
-                    if (!respostaTurmas.ok) {
-                        throw new Error('Erro ao consultar turmas.');
-                    }
-
-                    const turmas = await respostaTurmas.json();
-
-                    const idsProfessores = new Set(
-                        turmas
-                            .filter(turma =>
-                                turma.ativo === true &&
-                                turma.professorId != null
-                            )
-                            .map(turma => Number(turma.professorId))
-                    );
-
-                    const professoresDisponiveis = professores.filter(
-                        professor =>
-                            idsProfessores.has(Number(professor.id))
-                    );
-
-                    selectProfessor.replaceChildren(
-                        new Option(
-                            professoresDisponiveis.length > 0
-                                ? 'Selecione um professor'
-                                : 'Nenhum professor disponível',
-                            ''
-                        )
-                    );
-
-                    professoresDisponiveis.forEach(professor => {
-                        selectProfessor.add(
-                            new Option(professor.nome, professor.id)
-                        );
-                    });
-
-                    selectProfessor.disabled =
-                        professoresDisponiveis.length === 0;
-
-                } catch (erro) {
-                    console.error('Erro ao carregar professores:', erro);
-
-                    selectProfessor.replaceChildren(
-                        new Option('Erro ao carregar professores', '')
-                    );
+                    await navigator.clipboard.writeText(f.pixCopiaCola);
+                    toastOk('Código copiado');
+                } catch {
+                    form.querySelector('#pg-pix').select();
+                    toast('Selecione e copie o código manualmente');
                 }
             };
-        }
-
-        container.innerHTML = '';
-
-        if (aulas.length === 0) {
-            container.textContent = 'Você ainda não solicitou aulas particulares.';
-            return;
-        }
-
-        aulas.forEach(aula => {
-            const card = document.createElement('div');
-            card.className = 'particular-card';
-
-            const statusClasse = {
-                SOLICITADO: 'status-solicitado',
-                CONFIRMADO: 'status-confirmado',
-                CONCLUIDO: 'status-concluido',
-                CANCELADO: 'status-cancelado'
-            }[aula.status] || 'status-solicitado';
-
-            const dataFormatada = new Date(aula.dataHora).toLocaleString('pt-br', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-
-            card.innerHTML = `
-                <div class="particular-topo">
-                    <div>
-                        <h3>Aula Particular #${aula.id}</h3>
-                        <div class="particular-subtitulo">Agendamento individual</div>
-                    </div>
-                    <span class="particular-status ${statusClasse}">${aula.status}</span>
-                </div>
-
-                <div class="particular-grid">
-                    <div class="particular-info">
-                        <span>Modalidade</span>
-                        <strong class="nome-modalidade"></strong>
-                    </div>
-
-                    <div class="particular-info">
-                        <span>Professor</span>
-                        <strong class="nome-professor"></strong>
-                    </div>
-
-                    <div class="particular-info">
-                        <span>Data e horário</span>
-                        <strong>${dataFormatada}</strong>
-                    </div>
-
-                    <div class="particular-info">
-                        <span>Duração</span>
-                        <strong>${aula.duracaoMinutos} min</strong>
-                    </div>
-                </div>
-            `;
-
-            if (aula.observacoes) {
-                const observacao = document.createElement('div');
-                observacao.className = 'particular-observacao';
-
-                const titulo = document.createElement('strong');
-                titulo.textContent = 'Observações:';
-
-                observacao.appendChild(titulo);
-                observacao.appendChild(document.createElement('br'));
-                observacao.appendChild(
-                    document.createTextNode(aula.observacoes)
-                );
-
-                card.appendChild(observacao);
-            }
-
-            const modalidade = modalidades.find(
-                m => Number(m.id) === Number(aula.idModalidade)
-            );
-
-            const professor = professores.find(
-                p => Number(p.id) === Number(aula.idProfessor)
-            );
-
-            card.querySelector('.nome-modalidade').textContent =
-                modalidade?.nome || 'Modalidade não encontrada';
-
-            card.querySelector('.nome-professor').textContent =
-                aula.idProfessor == null
-                    ? 'A definir.'
-                    : (professor?.nome || 'professor não encontrado.');
-
-
-            container.appendChild(card);
-        });
-
-    } catch (erro) {
-        console.error('Erro nas aulas particulares:', erro);
-        container.textContent = 'Não foi possível carregar os agendamentos.';
-    }
-}
-
-async function verificarAtualizacoesAulasParticulares() {
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) return;
-
-    try {
-        const resposta = await fetch('/api/aluno/aulas-particulares', {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        });
-
-        if (!resposta.ok) return;
-
-        const aulas = await resposta.json();
-
-        const novosStatus = new Map(
-            aulas.map(aula => [aula.id, aula.status])
-        );
-
-        if (statusAnterioresAulasParticulares === null) {
-            statusAnterioresAulasParticulares = novosStatus;
-            return;
-        }
-
-        aulas.forEach(aula => {
-            const statusAnterior =
-                statusAnterioresAulasParticulares.get(aula.id);
-
-            if (
-                statusAnterior === 'SOLICITADO' &&
-                aula.status === 'CONFIRMADO'
-            ) {
-                window.VibeUI.showToast(
-                    `Sua aula particular #${aula.id} foi confirmada!`,
-                    'success'
-                );
-            }
-        });
-
-        statusAnterioresAulasParticulares = novosStatus;
-
-    } catch (erro) {
-        console.error('Erro ao verificar confirmações:', erro);
-    }
-}
-
-/**
- * Renderiza as turmas onde o aluno está atualmente matriculado
- */
-async function renderizarMinhasAulas(alunoId) {
-    const container = document.getElementById('container-minhas-turmas');
-    let turmas = [];
-
-    try {
-        const token = sessionStorage.getItem('vibedance_token');
-
-        if (!token) {
-            throw new Error('Sessao expirada. Faca login novamente.');
-        }
-
-        const headers = {
-            'Authorization': 'Bearer ' + token
-        };
-
-        const [resTurmas, resMatriculas, resProfessores] = await Promise.all([
-            fetch('/api/turmas'),
-            fetch('/api/aluno/matriculas', { headers }),
-            fetch('/api/aluno/professores', { headers })
-        ]);
-
-        if (!resTurmas.ok || !resMatriculas.ok || !resProfessores.ok) {
-            throw new Error('Nao foi possivel consultar o backend.');
-        }
-
-        const todasTurmas = await resTurmas.json();
-        const matriculas = await resMatriculas.json();
-        const professores = await resProfessores.json();
-
-        turmas = matriculas
-            .filter(m => m.status === 'ATIVA' && Number(m.idAluno) === Number(alunoId))
-            .map(m => {
-                const t = todasTurmas.find(t => Number(t.id) === Number(m.idTurma));
-
-                if (!t) return null;
-
-                return {
-                    id: t.id,
-                    idMatricula: m.id,
-                    nome: t.nomeTurma,
-                    modalidadeNome: t.modalidade?.nome || 'Nao informada',
-                    dias: t.diasSemana,
-                    nivel: ({
-                        INICIANTE: 'Iniciante',
-                        INTERMEDIARIO: 'Intermediário',
-                        AVANCADO: 'Avançado',
-                        TODOS_OS_NIVEIS: 'Todos os níveis'
-                    })[String(t.nivel || '').trim().toUpperCase()] || t.nivel || 'Geral',
-                    horario: (t.horario || '').slice(0, 5) + ' - ' +
-                             (t.horarioFim || '').slice(0, 5),
-                    professorNome: t.professorNome || 'Nao informado',
-                    salaNome: t.salaNome || 'Nao informada'
-                }
-            })
-            .filter(Boolean);
-    } catch (erro) {
-        console.error('Erro ao carregar matriculas:', erro);
-        if (container) {
-            container.textContent = 'Nao foi possivel carregar suas aulas.';
-        }
-        return;
-    }
-
-    // Atualiza contador nas métricas
-    const countEl = document.getElementById('stat-turmas-matriculadas');
-    if (countEl) countEl.textContent = turmas.length;
-
-    atualizarProximaAulaAluno(turmas);
-
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (turmas.length === 0) {
-        container.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 40px; text-align: center; background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
-                <i class="fas fa-calendar-times" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 12px;"></i>
-                <h3 style="color: #fff;">Nenhuma turma matriculada</h3>
-                <p style="color: var(--text-muted); margin-bottom: 20px;">Vá até a aba "Explorar Turmas" para encontrar o seu ritmo!</p>
-                <button class="btn-vibe-primary" onclick="trocarAba('explorar', null)">Explorar Turmas Agora</button>
-            </div>
-        `;
-        return;
-    }
-
-    turmas.forEach(turma => {
-        const card = document.createElement('div');
-        card.className = 'class-card';
-        card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <span class="class-time-tag">
-                    <i class="fas fa-calendar-day"></i> ${turma.dias}
-                </span>
-                <span class="badge badge-purple">${turma.nivel || 'Geral'}</span>
-            </div>
-
-            <div>
-                <h3 style="color: #fff; font-size: 1.25rem; font-family: var(--font-heading); margin-bottom: 6px;">
-                    ${turma.nome}
-                </h3>
-                <p style="color: var(--neon-pink); font-size: 0.88rem; font-weight: 600;">
-                    <i class="fas fa-layer-group"></i> ${turma.modalidadeNome}
-                </p>
-            </div>
-
-            <div class="card-meta-list" style="margin-bottom: 10px;">
-                <div class="meta-item">
-                    <i class="fas fa-user-circle"></i>
-                    <span>Instrutor(a): <strong>${turma.professorNome}</strong></span>
-                </div>
-                <div class="meta-item">
-                    <i class="fas fa-clock"></i>
-                    <span>Horário: <strong>${turma.horario}</strong></span>
-                </div>
-                <div class="meta-item">
-                    <i class="fas fa-map-marker-alt"></i>
-                    <span>Sala: <strong>${turma.salaNome || 'Studio Principal'}</strong></span>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-top: auto;">
-                <button class="btn-vibe-primary" style="flex: 1; padding: 10px 14px; font-size: 0.88rem;" onclick="confirmarPresenca(${turma.id})">
-                    <i class="fas fa-check"></i> Confirmar Presença
-                </button>
-                <button class="btn-vibe-secondary" style="padding: 10px 14px; font-size: 0.88rem;" onclick="trocarAba('materiais', null)">
-                    <i class="fas fa-music"></i>
-                </button>
-            </div>
-
-            <button class="btn-vibe-secondary"
-                style="width: 100%; margin-top: 10px; padding: 10px 14px; font-size: 0.85rem;"
-                onclick="cancelarMatricula(${turma.idMatricula})">
-                <i class="fas fa-ban"></i> Cancelar Matricula
-            </button>
-        `;
-        container.appendChild(card);
-    });
-}
-
-function atualizarProximaAulaAluno(turmas) {
-    const elementoAula = document.getElementById('stat-aluno-proxima-aula');
-    const elementoDetalhe = document.getElementById('stat-aluno-proxima-aula-detalhe');
-
-    if (!elementoAula || !elementoDetalhe) return;
-
-    const agora = new Date();
-    let proximaAula = null;
-
-    const diasSemana = [
-        ['DOMINGO', 0],
-        ['SEGUNDA', 1],
-        ['TERCA', 2],
-        ['QUARTA', 3],
-        ['QUINTA', 4],
-        ['SEXTA', 5],
-        ['SABADO', 6]
-    ];
-
-    turmas.forEach(turma => {
-        const diasTexto = String(turma.dias || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toUpperCase();
-
-        const horarioTexto = String(turma.horario || '').split('-')[0].trim();
-        const partesHorario = horarioTexto.split(':');
-
-        if (partesHorario.length < 2) return;
-
-        const hora = Number(partesHorario[0]);
-        const minuto = Number(partesHorario[1]);
-
-        if (
-            !Number.isInteger(hora) ||
-            !Number.isInteger(minuto) ||
-            hora < 0 || hora > 23 ||
-            minuto < 0 || minuto > 59
-        ) return;
-
-        diasSemana.forEach(([nomeDia, numeroDia]) => {
-            if (!diasTexto.includes(nomeDia)) return;
-
-            for (let i = 0; i <= 7; i++) {
-                const dataAula = new Date(agora);
-                dataAula.setDate(agora.getDate() + i);
-                dataAula.setHours(hora, minuto, 0, 0);
-
-                if (dataAula.getDay() !== numeroDia) continue;
-                if (dataAula <= agora) continue;
-
-                if (!proximaAula || dataAula < proximaAula.data) {
-                    proximaAula = {
-                        data: dataAula,
-                        turma: turma
-                    };
-                }
-
-                break;
-            }
-        });
-    });
-
-    if (!proximaAula) {
-        elementoAula.textContent = 'Sem próxima aula';
-        elementoDetalhe.textContent = 'Nenhuma aula futura encontrada.';
-        return;
-    }
-
-    const data = proximaAula.data;
-    const horario = data.toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-
-    const hoje = data.toDateString() === agora.toDateString();
-
-    const diaFormatado = hoje
-        ? 'Hoje'
-        : data.toLocaleDateString('pt-BR', {
-            weekday: 'long',
-            day: '2-digit',
-            month: '2-digit'
-        });
-
-    elementoAula.textContent = `${diaFormatado}, ${horario}`;
-
-    const turma = proximaAula.turma;
-    elementoDetalhe.textContent =
-        `${turma.salaNome} • Prof. ${String(turma.professorNome || 'Não informado').replace(/^Prof\.\s*/i, '')}`;
-}
-
-function confirmarPresenca(turmaId) {
-    window.VibeUI.showToast(
-        'A presença será registrada pelo professor durante a chamada da aula.',
-        'info'
-    );
-}
-window.confirmarPresenca = confirmarPresenca;
-
-async function cancelarMatricula(idMatricula) {
-    const confirmou = window.confirm(
-        'Tem certeza que deseja cancelar esta matricula?'
-    );
-
-    if (!confirmou) return;
-
-    const token =sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        window.VibeUI.showToast('Faca login novamente.', 'error');
-        return;
-    }
-
-    try {
-        const resposta = await fetch(
-            `/api/aluno/matriculas/${idMatricula}/cancelar`,
-            {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            }
-        );
-
-        const dados = await resposta.json();
-
-        if (!resposta.ok) {
-            window.VibeUI.showToast(
-                dados.erro || 'Nao foi possivel cancelar a matricula.',
-                'error'
-            );
-            return;
-        }
-
-        window.VibeUI.showToast(
-            'Matricula cancelada com sucesso!',
-            'success'
-        );
-
-        inicializarPainelAluno();
-
-    } catch (erro) {
-        console.error('Erro ao cancelar matricula:', erro);
-        window.VibeUI.showToast(
-            'Erro de comunicacao com o servidor.',
-            'error'
-        );
-    }
-}
-
-window.cancelarMatricula = cancelarMatricula;
-
-/**
- * Renderiza os Materiais de Apoio (Playlists e Vídeos)
- */
-async function renderizarMateriais() {
-    const container = document.getElementById('container-materiais-aluno');
-
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        container.textContent = 'Faça login novamente para visualizar os materiais.';
-        return;
-    }
-
-    try {
-        const resposta = await fetch('/api/aluno/materiais', {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        });
-
-        if (!resposta.ok) {
-            throw new Error('Não foi possível carregar os materiais.');
-        }
-
-        const materiais = await resposta.json();
-
-        if (materiais.length === 0) {
-            container.textContent = 'Nenhum material disponível para suas turmas.';
-            return;
-        }
-
-        materiais.forEach(mat => {
-            const card = document.createElement('div');
-            const isPlaylist = mat.tipo === 'PLAYLIST';
-            const duracao = mat.duracaoMinutos
-                ? `${mat.duracaoMinutos} min`
-                : 'Não informada';
-
-            card.className = isPlaylist ? 'playlist-card' : 'vibe-card';
-
-            if (isPlaylist) {
-                card.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="badge badge-cyan">
-                            <i class="fas fa-headphones"></i> Playlist da Aula
-                        </span>
-                        <div class="soundwave-visualizer">
-                            <div class="soundwave-bar"></div>
-                            <div class="soundwave-bar"></div>
-                            <div class="soundwave-bar"></div>
-                            <div class="soundwave-bar"></div>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 14px; margin-top: 6px;">
-                        <div class="audio-disc-icon">
-                            <i class="fas fa-compact-disc"></i>
-                        </div>
-                        <div>
-                            <h4 style="color: #fff; font-size: 1.15rem; font-family: var(--font-heading);">${mat.titulo}</h4>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">
-                                Duração: ${duracao}
-                            </span>
-                        </div>
-                    </div>
-
-                    <p style="color: var(--text-secondary); font-size: 0.86rem; line-height: 1.5; margin: 4px 0;">
-                        ${mat.descricao || ''}
-                    </p>
-
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <a href="${mat.url}" target="_blank" rel="noopener noreferrer"
-                           class="btn-vibe-primary"
-                           style="flex: 1; text-decoration: none; padding: 10px 14px; font-size: 0.85rem;">
-                            <i class="fab fa-spotify"></i> Abrir playlist
-                        </a>
-                    </div>
-                `;
-            } else {
-                const ehVideo = mat.tipo === 'VIDEO_COREOGRAFIA';
-                const ehPdf = mat.tipo === 'DOCUMENTO_PDF';
-
-                const icone = ehVideo ? 'fa-video' : ehPdf ? 'fa-file-pdf' : 'fa-external-link-alt';
-                const tipoTexto = ehVideo ? 'Vídeo Tutorial' : ehPdf ? 'Documento PDF' : 'Link Externo';
-                const acaoTexto = ehVideo ? 'Assistir Ensaio' : ehPdf ? 'Abrir Documento' : 'Acessar Material';
-
-                card.innerHTML = `
-                    <div class="card-top-banner" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.3), rgba(168, 85, 247, 0.4));">
-                        <i class="fas ${icone}" style="font-size: 3rem; color: #fff;"></i>
-                        <span class="card-badge badge-pink">${tipoTexto}</span>
-                    </div>
-                    <div class="card-body">
-                        <h4 class="card-title">${mat.titulo}</h4>
-                        <p class="card-desc">${mat.descricao || ''}</p>
-                        <div class="card-meta-list">
-                            <div class="meta-item">
-                                <i class="fas fa-clock"></i>
-                                <span>Duração: ${duracao}</span>
-                            </div>
-                        </div>
-                        <a href="${mat.url}" target="_blank" rel="noopener noreferrer"
-                           class="btn-vibe-primary"
-                           style="display: block; width: 100%; text-align: center; text-decoration: none;">
-                            <i class="fas ${icone}"></i> ${acaoTexto}
-                        </a>
-                    </div>
-                `;
-            }
-
-            container.appendChild(card);
-        });
-
-    } catch (erro) {
-        console.error('Erro ao carregar materiais:', erro);
-        container.textContent = 'Não foi possível carregar os materiais. Tente novamente.';
-    }
-}
-
-/**
- * Renderiza os comunicados das turmas em que o aluno está matriculado
- */
-async function renderizarComunicadosAluno() {
-    const container = document.getElementById('container-comunicados-aluno');
-    if (!container) return;
-
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        container.textContent = 'Faça login novamente para visualizar os comunicados.';
-        return;
-    }
-
-    container.textContent = 'Carregando comunicados...';
-
-    try {
-        const resposta = await fetch('/api/aluno/comunicados', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        if (!resposta.ok) {
-            throw new Error('Falha ao buscar comunicados.');
-        }
-
-        const comunicados = await resposta.json();
-        container.innerHTML = '';
-
-        if (!comunicados.length) {
-            container.textContent = 'Nenhum comunicado disponível para suas turmas.';
-            return;
-        }
-
-        comunicados.forEach(comunicado => {
-            const card = document.createElement('div');
-            card.className = 'vibe-card';
-
-            const topo = document.createElement('div');
-            topo.className = 'card-body';
-
-            const titulo = document.createElement('h4');
-            titulo.className = 'card-title';
-            titulo.textContent = comunicado.titulo;
-
-            const mensagem = document.createElement('p');
-            mensagem.className = 'card-desc';
-            mensagem.textContent = comunicado.conteudo;
-
-            const professor = document.createElement('p');
-            professor.className = 'card-meta';
-            professor.textContent = `Professor: ${comunicado.professorNome || 'Não informado'}`;
-
-            const data = document.createElement('p');
-            data.className = 'card-meta';
-            data.textContent = comunicado.data
-                ? new Date(comunicado.data).toLocaleString('pt-BR')
-                : '';
-
-            topo.appendChild(titulo);
-
-            if (comunicado.urgente) {
-                const destaque = document.createElement('span');
-                destaque.className = 'card-badge badge-pink';
-                destaque.textContent = 'Destaque / Importante';
-                topo.appendChild(destaque);
-            }
-
-            topo.appendChild(mensagem);
-            topo.appendChild(professor);
-            topo.appendChild(data);
-
-            if (comunicado.link) {
-                const link = document.createElement('a');
-                link.href = comunicado.link;
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-                link.className = 'btn-vibe-primary';
-                link.textContent = 'Acessar anexo / playlist';
-                topo.appendChild(link);
-            }
-
-            card.appendChild(topo);
-            container.appendChild(card);
-        });
-
-    } catch (erro) {
-        console.error('Erro ao carregar comunicados:', erro);
-        container.textContent = 'Não foi possível carregar os comunicados.';
-    }
-}
-
-function abrirPlayerModal(titulo, desc, url) {
-    document.getElementById('modal-player-titulo').textContent = titulo;
-    document.getElementById('modal-player-desc').textContent = desc;
-    document.getElementById('modal-player-link').href = url;
-    window.VibeUI.openModal('modal-player');
-}
-window.abrirPlayerModal = abrirPlayerModal;
-
-/**
- * Renderiza o histórico de presenças do aluno
- */
-async function renderizarHistorico(alunoId) {
-    const tbody = document.getElementById('tabela-historico-presencas');
-    if (!tbody) return;
-
-    const token = sessionStorage.getItem('vibedance_token');
-
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="5" style="text-align: center; padding: 30px;">
-                Carregando histórico de frequência...
-            </td>
-        </tr>
-    `;
-
-    try {
-        const resposta = await fetch('/api/aluno/presencas', {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        });
-
-        if (!resposta.ok) {
-            throw new Error('Não foi possível carregar o histórico de frequência.');
-        }
-
-        const presencas = await resposta.json();
-
-        // Atualiza o resumo mensal de aulas
-        try {
-            const respostaResumo = await fetch('/api/aluno/presencas/resumo', {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            });
-
-            if (respostaResumo.ok) {
-                const resumo = await respostaResumo.json();
-
-                const elementoAulas = document.getElementById('stat-total-aulas');
-                const elementoMeta = document.getElementById('stat-meta-aulas');
-
-                if (elementoAulas) {
-                    elementoAulas.textContent = resumo.aulasConcluidas;
-                }
-
-                if (elementoMeta) {
-                    elementoMeta.textContent =
-                        `Meta mensal: ${resumo.metaMensal} aulas`;
-                }
-            }
-        } catch (erroResumo) {
-            console.error('Erro ao carregar resumo mensal:', erroResumo);
-        }
-
-        const totalAulas = presencas.length;
-        const totalPresencas = presencas.filter(p => p.presente).length;
-
-        const percentual = totalAulas > 0
-            ? Math.round((totalPresencas / totalAulas) * 100)
-            : 0;
-
-        const elementoPercentual = document.getElementById('frequencia-percentual');
-        const elementoBarra = document.getElementById('frequencia-barra');
-        const elementoDescricao = document.getElementById('frequencia-descricao');
-        const elementoStatus = document.getElementById('frequencia-status');
-
-        if (elementoPercentual) {
-            elementoPercentual.textContent = percentual + '%';
-        }
-
-        if (elementoBarra) {
-            elementoBarra.style.width = percentual + '%';
-        }
-
-        if (elementoDescricao) {
-            elementoDescricao.textContent =
-                `${totalPresencas} ${totalPresencas === 1 ? 'presença' : 'presenças'} em ${totalAulas} ${totalAulas === 1 ? 'aula registrada' : 'aulas registradas'}`;
-        }
-
-        if (elementoStatus) {
-            if (totalAulas === 0) {
-                elementoStatus.className = 'badge';
-                elementoStatus.innerHTML = 'Aguardando registros';
-            } else if (percentual >= 75) {
-                elementoStatus.className = 'badge badge-green';
-                elementoStatus.innerHTML = '<i class="fas fa-check"></i> Frequência regular';
-            } else {
-                elementoStatus.className = 'badge badge-pink';
-                elementoStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Atenção à frequência';
-            }
-        }
-
-        tbody.innerHTML = '';
-
-        if (presencas.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                        Nenhum registro de frequência registrado ainda.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        presencas.forEach(p => {
-            const tr = document.createElement('tr');
-
-            const badge = p.presente
-                ? '<span class="badge badge-green"><i class="fas fa-check"></i> Presente</span>'
-                : '<span class="badge badge-pink"><i class="fas fa-times"></i> Falta</span>';
-
-            tr.innerHTML = `
-                <td><strong>${p.data || 'Hoje'}</strong></td>
-                <td style="color: #fff; font-weight: 600;">${p.turmaNome || 'Turma Regular'}</td>
-                <td>${p.professorNome || 'Instrutor'}</td>
-                <td>${p.horario || 'Noite'}</td>
-                <td>${badge}</td>
-            `;
-
-            tbody.appendChild(tr);
-        });
-
-    } catch (erro) {
-        console.error('Erro ao carregar histórico:', erro);
-
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                    Não foi possível carregar o histórico de frequência.
-                </td>
-            </tr>
-        `;
-    }
-}
-
-/**
- * Renderiza todas as turmas abertas para matrícula
- */
-async function renderizarTodasTurmas(alunoId) {
-    const container = document.getElementById('container-todas-turmas');
-    if (!container) return;
-
-    let turmas = [];
-    let minhasTurmasIds = [];
-    let turmasCanceladasIds = [];
-
-    try {
-        const token = sessionStorage.getItem('vibedance_token');
-
-        if (!token) {
-            throw new Error('Sessao nao encontrada.');
-        }
-
-        const [resTurmas, resMatriculas] = await Promise.all([
-            fetch('/api/turmas'),
-            fetch('/api/aluno/matriculas', {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            })
-        ]);
-
-        if (!resTurmas.ok || !resMatriculas.ok) {
-            throw new Error('Falha ao consultar o backend.');
-        }
-
-        const dadosTurmas = await resTurmas.json();
-        const matriculas = await resMatriculas.json();
-
-        turmas = dadosTurmas
-            .filter(t => t.ativo === true)
-            .map(t => ({
-                id: t.id,
-                nome: t.nomeTurma,
-                categoria: t.modalidade?.categoria || '',
-                horarioInicio: (t.horario || '').slice(0, 5),
-                nivel: ({
-                    INICIANTE: 'Iniciante',
-                    INTERMEDIARIO: 'Intermediário',
-                    AVANCADO: 'Avançado',
-                    TODOS_OS_NIVEIS: 'Todos os níveis'
-                })[String(t.nivel || '').trim().toUpperCase()] || t.nivel || 'Geral',
-                professorNome: t.professorNome || 'Nao informado',
-                salaNome: t.salaNome || 'Nao informada',
-                dias: t.diasSemana,
-                horario: (t.horario || '').slice(0, 5) + ' - ' +
-                         (t.horarioFim || '').slice(0, 5),
-                vagas: t.limiteVagas,
-                ocupadas: t.vagasOcupadas || 0
-            }));
-
-        minhasTurmasIds = matriculas
-            .filter(m => m.status === 'ATIVA')
-            .map(m => Number(m.idTurma));
-
-        turmasCanceladasIds = matriculas
-            .filter(m => m.status === 'CANCELADA')
-            .map(m => Number(m.idTurma));
-
-    } catch (erro) {
-        console.error('Erro ao carregar turmas:', erro);
-        container.textContent = 'Nao foi possivel carregar as turmas.';
-        return;
-    }
-
-    const filtroCategoria = document.getElementById('filtro-categoria-turma');
-    const filtroHorario = document.getElementById('filtro-horario-turma');
-
-    function aplicarFiltrosTurmas() {
-        container.innerHTML = '';
-
-        const categoriaSelecionada = filtroCategoria.value;
-        const horarioSelecionado = filtroHorario.value;
-
-        const turmasFiltradas = turmas.filter(t => {
-            if (categoriaSelecionada && t.categoria !== categoriaSelecionada) {
-                return false;
-            }
-
-            if (horarioSelecionado) {
-                const hora = Number(t.horarioInicio.split(':')[0]);
-
-                if (horarioSelecionado === 'manha' && hora >= 11) {
-                    return false;
-                }
-
-                if (horarioSelecionado === 'tarde' && (hora < 11 || hora >= 18)) {
-                    return false;
-                }
-
-                if (horarioSelecionado === 'noite' && hora < 18) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-
-        if (turmasFiltradas.length === 0) {
-            container.textContent = 'Nenhuma turma encontrada com esses filtros.';
-            return;
-        }
-
-        turmasFiltradas.forEach(t => {
-            const jaMatriculado = minhasTurmasIds.includes(t.id);
-            const matriculaCancelada = turmasCanceladasIds.includes(t.id);
-            const semLimiteVagas = t.vagas == null || t.vagas <= 0;
-            const vagasRestantes = semLimiteVagas
-                ? 0
-                : Math.max(0, t.vagas - (t.ocupadas || 0));
-            const lotada = vagasRestantes <= 0;
-
-            const card = document.createElement('div');
-            card.className = 'vibe-card';
-
-            let botaoAcao = '';
-
-            if (jaMatriculado) {
-                botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.8;"><i class="fas fa-check-circle" style="color: var(--neon-emerald);"></i> Já Matriculado</button>`;
-            } else if (matriculaCancelada) {
-                botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.8;"><i class="fas fa-ban"></i> Matricula Cancelada</button>`;
-            } else if (lotada) {
-                botaoAcao = `<button class="btn-vibe-secondary" disabled style="width: 100%; opacity: 0.5;"><i class="fas fa-ban"></i> ${semLimiteVagas ? 'Vagas não configuradas' : 'Turma Lotada'}</button>`;
-            } else {
-                botaoAcao = `<button class="btn-vibe-primary" style="width: 100%;" onclick="realizarMatricula(${alunoId}, ${t.id})"><i class="fas fa-plus"></i> Matricular-se Agora</button>`;
-            }
-
-            card.innerHTML = `
-                <div class="card-top-banner">
-                    <i class="fas fa-music banner-bg-icon"></i>
-                    <span class="card-badge badge-purple">${t.nivel || 'Geral'}</span>
-                </div>
-                <div class="card-body">
-                    <h4 class="card-title">${t.nome}</h4>
-                    <p class="card-desc">Instrutor: <strong>${t.professorNome}</strong> • Sala: ${t.salaNome || 'Studio A'}</p>
-
-                    <div class="card-meta-list">
-                        <div class="meta-item">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span>Dias: <strong>${t.dias}</strong></span>
-                        </div>
-                        <div class="meta-item">
-                            <i class="fas fa-clock"></i>
-                            <span>Horário: <strong>${t.horario}</strong></span>
-                        </div>
-                        <div class="meta-item">
-                            <i class="fas fa-users"></i>
-                            <span>Vagas: <strong>${semLimiteVagas ? 'Não configuradas' : vagasRestantes + ' disponíveis'}</strong> (${t.ocupadas || 0}/${semLimiteVagas ? '—' : t.vagas})</span>
-                        </div>
-                    </div>
-
-                    ${botaoAcao}
-                </div>
-            `;
-
-            container.appendChild(card);
-        });
-    }
-
-    filtroCategoria.addEventListener('change', aplicarFiltrosTurmas);
-    filtroHorario.addEventListener('change', aplicarFiltrosTurmas);
-
-    aplicarFiltrosTurmas();
-}
-
-async function renderizarModalidades() {
-    const container = document.getElementById('container-modalidades');
-
-    if (!container) return;
-
-    container.textContent = 'Carregando modalidades...';
-
-    try {
-        const resposta = await fetch('/api/modalidades');
-
-        if (!resposta.ok) {
-            throw new Error('Erro ao carregar modalidades.');
-        }
-
-        const modalidades = await resposta.json();
-
-        container.replaceChildren();
-
-        if (modalidades.length === 0) {
-            container.textContent = 'Nenhuma modalidade disponível.';
-            return;
-        }
-
-        modalidades.forEach(modalidade => {
-            const card = document.createElement('div');
-            card.className = 'vibe-card';
-
-            const banner = document.createElement('div');
-            banner.className = 'card-top-banner';
-
-            if (modalidade.imagemUrl) {
-                const imagem = document.createElement('img');
-                imagem.src = modalidade.imagemUrl;
-                imagem.alt = modalidade.nome;
-                imagem.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-
-                banner.appendChild(imagem);
-            } else {
-                const icone = document.createElement('i');
-                icone.className = `fas ${modalidade.icone || 'fa-music'} banner-bg-icon`;
-                banner.appendChild(icone);
-            }
-
-            const corpo = document.createElement('div');
-            corpo.className = 'card-body';
-
-            const categoria = document.createElement('span');
-            categoria.className = 'card-badge badge-purple';
-            categoria.textContent = modalidade.categoria || 'Dança';
-
-            const nome = document.createElement('h4');
-            nome.className = 'card-title';
-            nome.textContent = modalidade.nome;
-
-            const descricao = document.createElement('p');
-            descricao.className = 'card-desc';
-            descricao.textContent = modalidade.descricao || 'Descrição não disponível.';
-
-            corpo.append(categoria, nome, descricao);
-            card.append(banner, corpo);
-            container.appendChild(card);
-        });
-
-    } catch (erro) {
-        console.error('Erro ao carregar modalidades:', erro);
-        container.textContent = 'Não foi possível carregar as modalidades.';
-    }
-}
-
-async function realizarMatricula(alunoId, turmaId) {
-    try {
-        const token = sessionStorage.getItem('vibedance_token');
-
-        if (!token) {
-            window.VibeUI.showToast('Faca login novamente.', 'error');
-            return;
-        }
-
-        const resposta = await fetch('/api/aluno/matriculas', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({
-                idTurma: turmaId
-            })
-        });
-
-        const dados = await resposta.json();
-
-        if (resposta.ok) {
-            window.VibeUI.showToast('Matricula realizada com sucesso!', 'success');
-            inicializarPainelAluno();
-        } else {
-            window.VibeUI.showToast(
-                dados.erro || 'Nao foi possivel realizar a matricula.',
-                'error'
-            );
-        }
-
-    } catch (erro) {
-        console.error('Erro ao realizar matricula:', erro);
-        window.VibeUI.showToast('Erro de comunicacao com o servidor.', 'error');
-    }
-}
-window.realizarMatricula = realizarMatricula;
-
-// =========================================================================
-// --- MÓDULO DO ALUNO: GESTÃO DE FATURAS, PAGAMENTOS E COMPROVANTES ---
-// =========================================================================
-
-let faturaSelecionadaPix = null;
-
-function atualizarStatusAcessoTopo(faturas) {
-    const fatura = Array.isArray(faturas) ? faturas[0] : null;
-
-    let statusInfo;
-
-    if (!fatura) {
-        statusInfo = {
-            status: 'AUTORIZADO',
-            label: 'Acesso Liberado (Cortesia/Trial)',
-            badgeClass: 'badge-green',
-            icon: 'fa-check-circle'
-        };
-    } else if (fatura.status === 'CONFIRMADO') {
-        statusInfo = {
-            status: 'AUTORIZADO',
-            label: 'Acesso Autorizado',
-            badgeClass: 'badge-green',
-            icon: 'fa-check-circle'
-        };
-    } else if (fatura.status === 'EM_ANALISE') {
-        statusInfo = {
-            status: 'EM_ANALISE',
-            label: 'Comprovante em Análise',
-            badgeClass: 'badge-amber',
-            icon: 'fa-hourglass-half'
-        };
-    } else if (fatura.status === 'VENCIDO') {
-        statusInfo = {
-            status: 'BLOQUEADO',
-            label: 'Acesso Bloqueado (Vencido)',
-            badgeClass: 'badge-red',
-            icon: 'fa-ban'
-        };
-    } else {
-        statusInfo = {
-            status: 'PENDENTE',
-            label: 'Acesso Tolerância (Pendente)',
-            badgeClass: 'badge-cyan',
-            icon: 'fa-clock'
-        };
-    }
-
-    const pill = document.getElementById('aluno-access-badge-pill');
-    const textEl = document.getElementById('aluno-access-badge-text');
-    const iconEl = document.getElementById('aluno-access-icon');
-    const cardStatus = document.getElementById('status-acesso-fatura-card');
-
-    if (pill && textEl && iconEl) {
-        textEl.textContent = statusInfo.label;
-        iconEl.className = `fas ${statusInfo.icon}`;
-
-        if (statusInfo.status === 'AUTORIZADO') {
-            pill.style.borderColor = 'rgba(16, 185, 129, 0.4)';
-            pill.style.background = 'rgba(16, 185, 129, 0.12)';
-            textEl.style.color = 'var(--neon-emerald)';
-            iconEl.style.color = 'var(--neon-emerald)';
-        } else if (statusInfo.status === 'EM_ANALISE') {
-            pill.style.borderColor = 'rgba(245, 158, 11, 0.4)';
-            pill.style.background = 'rgba(245, 158, 11, 0.12)';
-            textEl.style.color = 'var(--neon-amber)';
-            iconEl.style.color = 'var(--neon-amber)';
-        } else if (statusInfo.status === 'BLOQUEADO') {
-            pill.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-            pill.style.background = 'rgba(239, 68, 68, 0.12)';
-            textEl.style.color = '#ef4444';
-            iconEl.style.color = '#ef4444';
-        } else {
-            pill.style.borderColor = 'rgba(6, 182, 212, 0.4)';
-            pill.style.background = 'rgba(6, 182, 212, 0.12)';
-            textEl.style.color = 'var(--neon-cyan)';
-            iconEl.style.color = 'var(--neon-cyan)';
-        }
-    }
-
-    if (cardStatus) {
-        cardStatus.innerHTML = `
-            <span class="badge ${statusInfo.badgeClass}" style="font-size: 0.95rem; padding: 10px 18px;">
-                <i class="fas ${statusInfo.icon}"></i> ${statusInfo.label}
-            </span>
-        `;
-    }
-}
-
-window.atualizarStatusAcessoTopo = atualizarStatusAcessoTopo;
-
-async function renderizarFaturasAluno(alunoId) {
-    const container = document.getElementById('container-faturas-aluno');
-    if (!container) return;
-
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        container.innerHTML = '<p>Faça login novamente para consultar suas faturas.</p>';
-        return;
-    }
-
-    try {
-        const headers = {
-            'Authorization': 'Bearer ' + token
-        };
-
-        // Busca as faturas e os pagamentos reais do aluno
-        const [respostaFaturas, respostaPagamentos] = await Promise.all([
-            fetch('/api/aluno/faturas', { headers }),
-            fetch('/api/aluno/pagamentos', { headers })
-        ]);
-
-        if (!respostaFaturas.ok || !respostaPagamentos.ok) {
-            throw new Error('Não foi possível carregar os dados financeiros.');
-        }
-
-        const faturas = await respostaFaturas.json();
-        const pagamentos = await respostaPagamentos.json();
-
-        atualizarStatusAcessoTopo(faturas);
-        renderizarHistoricoPagamentos(pagamentos, faturas);
-
-        container.innerHTML = '';
-
-        // Atualiza contador de faturas pendentes
-        const pendentesCount = faturas.filter(f =>
-            f.status === 'PENDENTE' || f.status === 'VENCIDO'
-        ).length;
-
-        const badgeSide = document.getElementById('badge-faturas-pendentes');
-
-        if (badgeSide) {
-            badgeSide.textContent = `${pendentesCount} pendente(s)`;
-            badgeSide.style.display = pendentesCount > 0 ? 'inline-block' : 'none';
-        }
-
-        if (faturas.length === 0) {
-            container.innerHTML = `
-                <div style="grid-column: 1 / -1; padding: 40px; text-align: center; background: var(--bg-card); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
-                    <i class="fas fa-receipt" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 12px;"></i>
-                    <h3 style="color: #fff;">Nenhuma fatura encontrada</h3>
-                    <p style="color: var(--text-muted);">Suas cobranças aparecerão aqui.</p>
-                </div>
-            `;
-            return;
-        }
-
-        faturas.forEach(fatura => {
-            const card = document.createElement('div');
-            card.className = 'class-card';
-            card.style.display = 'flex';
-            card.style.flexDirection = 'column';
-            card.style.justifyContent = 'space-between';
-
-            let badgeStatus = '';
-            let botoesAcao = '';
-
-            // Procura o pagamento mais recente que possui comprovante
-            const pagamentosFatura = pagamentos.filter(p =>
-                String(p.idFatura) === String(fatura.id)
-            );
-
-            const pagamento = pagamentosFatura.find(p =>
-                p.possuiComprovante
-            );
-
-            // Se existe comprovante, mostra a opção de visualização
-            if (pagamento) {
-                if (pagamento.status === 'CONFIRMADO') {
-                    badgeStatus = '<span class="badge badge-green"><i class="fas fa-check-circle"></i> Confirmado</span>';
-                } else if (pagamento.status === 'EM_ANALISE') {
-                    badgeStatus = '<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>';
-                } else {
-                    badgeStatus = `<span class="badge badge-cyan">${fatura.status}</span>`;
-                }
-
-                botoesAcao = `
-                    <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;" onclick="verComprovanteAluno(${fatura.id})">
-                            <i class="fas fa-eye"></i> Visualizar Comprovante Enviado
-                        </button>
-                        ${pagamento.status === 'EM_ANALISE'
-                            ? '<span style="font-size: 0.78rem; color: var(--text-muted); text-align: center;">Aguardando aprovação do administrador</span>'
-                            : ''}
-                    </div>
-                `;
-            } else if (fatura.status === 'CONFIRMADO') {
-                badgeStatus = '<span class="badge badge-green"><i class="fas fa-check-circle"></i> Confirmado</span>';
-                botoesAcao = '<p style="margin-top: 16px; color: var(--text-muted); text-align: center;">Pagamento confirmado.</p>';
-            } else if (fatura.status === 'EM_ANALISE') {
-                badgeStatus = '<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>';
-                botoesAcao = '<p style="margin-top: 16px; color: var(--text-muted); text-align: center;">Pagamento aguardando análise.</p>';
-
-            } else if (fatura.status === 'VENCIDO') {
-                badgeStatus = '<span class="badge badge-red"><i class="fas fa-exclamation-triangle"></i> Vencido</span>';
-                botoesAcao = `
-                    <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn-vibe-primary" style="width: 100%;"
-                                onclick="abrirModalPix(${fatura.id})">
-                            <i class="fas fa-credit-card"></i> Pagar Online
-                        </button>
-                        <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;"
-                                onclick="abrirModalUploadComprovante(${fatura.id})">
-                            <i class="fas fa-upload"></i> Anexar Comprovante Manual
-                        </button>
-                    </div>
-                `;
-            } else {
-                badgeStatus = '<span class="badge badge-cyan"><i class="fas fa-clock"></i> Pendente</span>';
-                botoesAcao = `
-                    <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn-vibe-primary" style="width: 100%;"
-                                onclick="abrirModalPix(${fatura.id})">
-                            <i class="fas fa-credit-card"></i> Pagar Online
-                        </button>
-                        <button class="btn-vibe-secondary" style="width: 100%; font-size: 0.84rem;"
-                                onclick="abrirModalUploadComprovante(${fatura.id})">
-                            <i class="fas fa-upload"></i> Anexar Comprovante
-                        </button>
-                    </div>
-                `;
-            }
-
-
-            const dataVencFormatada = fatura.dataVencimento
-                ? fatura.dataVencimento.split('-').reverse().join('/')
-                : '-';
-
-            const valorFormatado = Number(fatura.valor).toLocaleString(
-                'pt-BR',
-                { style: 'currency', currency: 'BRL' }
-            );
-
-            card.innerHTML = `
-                <div>
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                        <span class="class-time-tag">
-                            <i class="fas fa-calendar-alt"></i> Vencimento: ${dataVencFormatada}
-                        </span>
-                        ${badgeStatus}
-                    </div>
-
-                    <h3 style="color: #fff; font-size: 1.15rem; font-family: var(--font-heading); margin-bottom: 6px;">
-                        ${fatura.titulo || 'Fatura'}
-                    </h3>
-
-                    <p style="color: var(--neon-cyan); font-size: 0.85rem; font-weight: 600; margin-bottom: 12px;">
-                        <i class="fas fa-layer-group"></i> ${fatura.turmaNome || 'Assinatura Mensal Geral'}
-                    </p>
-
-                    <div style="background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                            <span style="font-size: 0.82rem; color: var(--text-muted);">Valor Total:</span>
-                            <span style="font-size: 1.35rem; font-weight: 800; color: #fff; font-family: var(--font-heading);">${valorFormatado}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
-                            <span>Mês de Referência:</span>
-                            <strong style="color: var(--text-secondary);">${fatura.mesReferencia || '-'}</strong>
-                        </div>
-                    </div>
-                </div>
-
-                ${botoesAcao}
-            `;
-
-            container.appendChild(card);
-        });
-
-    } catch (erro) {
-        console.error('Erro ao carregar faturas:', erro);
-        container.innerHTML = `
-            <p style="color: var(--neon-pink); text-align: center;">
-                ${erro.message}
-            </p>
-        `;
-    }
-}
-
-window.renderizarFaturasAluno = renderizarFaturasAluno;
-
-function renderizarHistoricoPagamentos(pagamentos, faturas) {
-    const container = document.getElementById('container-historico-pagamentos');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    if (!pagamentos || pagamentos.length === 0) {
-        container.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 30px; text-align: center; background: var(--bg-card); border-radius: var(--radius-md);">
-                <i class="fas fa-history" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 12px;"></i>
-                <p style="color: var(--text-muted);">Nenhum pagamento registrado até o momento.</p>
-            </div>
-        `;
-        return;
-    }
-
-    pagamentos.forEach(pagamento => {
-        const fatura = faturas.find(f =>
-            String(f.id) === String(pagamento.idFatura)
-        );
-
-        const status = (pagamento.status || '').toUpperCase();
-
-        let badgeStatus;
-
-        if (status === 'CONFIRMADO') {
-            badgeStatus = '<span class="badge badge-green"><i class="fas fa-check-circle"></i> Pago</span>';
-        } else if (status === 'EM_ANALISE') {
-            badgeStatus = '<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em análise</span>';
-        } else if (status === 'PENDENTE') {
-            badgeStatus = '<span class="badge badge-cyan"><i class="fas fa-clock"></i> Pendente</span>';
-        } else {
-            badgeStatus = '<span class="badge badge-red">Não confirmado</span>';
-        }
-
-        const valor = Number(pagamento.valorPago || 0).toLocaleString(
-            'pt-BR',
-            { style: 'currency', currency: 'BRL' }
-        );
-
-        const dataOriginal = pagamento.dataConfirmacao || pagamento.criadoEm;
-        const data = dataOriginal
-            ? dataOriginal.substring(0, 10).split('-').reverse().join('/')
-            : 'Não informada';
-
-        const card = document.createElement('div');
-        card.className = 'class-card';
-
-        const titulo = document.createElement('h3');
-        titulo.style.cssText = 'color: #fff; font-size: 1.05rem; margin-bottom: 10px;';
-        titulo.textContent = fatura?.titulo || `Pagamento da fatura #${pagamento.idFatura}`;
-
-        const detalhes = document.createElement('div');
-        detalhes.style.cssText = 'display: flex; flex-direction: column; gap: 9px;';
-
-        const valorTexto = document.createElement('p');
-        valorTexto.style.color = 'var(--neon-cyan)';
-        valorTexto.textContent = `Valor: ${valor}`;
-
-        const formaTexto = document.createElement('p');
-        formaTexto.style.color = 'var(--text-secondary)';
-        formaTexto.textContent = `Forma de pagamento: ${pagamento.formaPagamento || 'Não informada'}`;
-
-        const dataTexto = document.createElement('p');
-        dataTexto.style.color = 'var(--text-secondary)';
-        dataTexto.textContent = `Data: ${data}`;
-
-        detalhes.append(valorTexto, formaTexto, dataTexto);
-
-        const topo = document.createElement('div');
-        topo.style.cssText = 'display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 14px;';
-        topo.appendChild(titulo);
-
-        const statusElemento = document.createElement('div');
-        statusElemento.innerHTML = badgeStatus;
-        topo.appendChild(statusElemento);
-
-        card.append(topo, detalhes);
-        if (status === 'CONFIRMADO') {
-            const botaoRecibo = document.createElement('button');
-            botaoRecibo.className = 'btn-vibe-secondary';
-            botaoRecibo.style.cssText = 'width: 100%; margin-top: 16px;';
-            botaoRecibo.innerHTML = '<i class="fas fa-file-pdf"></i> Baixar recibo PDF';
-
-            botaoRecibo.addEventListener('click', () => {
-                baixarReciboPagamento(pagamento.id);
-            });
-
-            card.appendChild(botaoRecibo);
-        }
-
-        container.appendChild(card);
-    });
-}
-
-async function baixarReciboPagamento(idPagamento) {
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        alert('Faça login novamente.');
-        return;
-    }
-
-    try {
-        const resposta = await fetch(
-            `/api/aluno/pagamentos/${idPagamento}/recibo`,
-            {
-                headers: {
-                    Authorization: 'Bearer ' + token
-                }
-            }
-        );
-
-        if (!resposta.ok) {
-            if (resposta.status === 409) {
-                throw new Error(
-                    'O recibo só está disponível para pagamentos confirmados.'
-                );
-            }
-
-            throw new Error('Não foi possível baixar o recibo.');
-        }
-
-        const blob = await resposta.blob();
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `recibo-pagamento-${idPagamento}.pdf`;
-
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-
-        URL.revokeObjectURL(url);
-
-    } catch (erro) {
-        alert(erro.message);
-    }
-}
-
-let paymentBrickController = null;
-
-async function inicializarPaymentBrick(fatura, token) {
-    const container = document.getElementById('paymentBrick_container');
-    const resultadoElemento = document.getElementById('resultado-pagamento');
-
-    container.innerHTML = '';
-    container.style.display = 'block';
-    resultadoElemento.style.display = 'none';
-
-    const respostaConfig = await fetch(
-        '/api/aluno/pagamentos/configuracao',
-        {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        }
-    );
-
-    if (respostaConfig.status === 503) {
-        throw new Error(
-            'Pagamento online temporariamente indisponível. As credenciais do Mercado Pago ainda não foram configuradas. Utilize o envio de comprovante.'
-        );
-    }
-
-    if (!respostaConfig.ok) {
-        throw new Error('Erro ao consultar a configuração do pagamento.');
-    }
-
-    const configuracao = await respostaConfig.json();
-
-    if (!configuracao.publicKey) {
-        throw new Error(
-            'Pagamento online indisponível. Utilize o envio de comprovante.'
-        );
-    }
-
-    if (typeof MercadoPago === 'undefined') {
-        throw new Error('A biblioteca do Mercado Pago não foi carregada.');
-    }
-
-    const mp = new MercadoPago(configuracao.publicKey);
-    const bricksBuilder = mp.bricks();
-
-    const settings = {
-        initialization: {
-            amount: Number(fatura.valor)
         },
-
-        locale: 'pt-BR',
-
-        paymentMethods: {
-            creditCard: 'all',
-            bankTransfer: 'pix',
-            ticket: 'all'
+        onSubmit: async (_, form) => {
+            const arquivo = form.querySelector('#pg-arq').files[0];
+            if (!arquivo) throw new Error('Anexe o comprovante.');
+            if (arquivo.size > 5 * 1024 * 1024) throw new Error('O arquivo excede 5 MB.');
+            const fd = new FormData();
+            fd.append('idFatura', f.id);
+            fd.append('arquivo', arquivo);
+            if (form.observacao.value) fd.append('observacao', form.observacao.value);
+            await api.post('/api/aluno/comprovantes', fd, { silencioso: true });
+            toastOk('Comprovante enviado', 'A administração vai conferir e você será notificado(a).');
         },
+    });
+}
 
-        callbacks: {
-            onReady: () => {
-                console.log('Payment Brick carregado.');
-            },
+// ======================================================================
+// 7. Minha matrícula (cancelamento)
+// ======================================================================
+const MOTIVOS = [
+    ['HORARIO', 'Incompatibilidade de horário'], ['FINANCEIRO', 'Motivos financeiros'], ['MUDANCA', 'Mudança de cidade'],
+    ['SAUDE', 'Saúde ou lesão'], ['INSATISFACAO', 'Insatisfação com as aulas'], ['OUTRO', 'Outro motivo'],
+];
+const rotuloMotivo = (m) => (MOTIVOS.find(([k]) => k === m) || [m, m])[1];
+const horarioTurma = (t) => `${(t.dias || []).map((d) => DIAS[d - 1]).join(' · ')} · ${t.horarioInicio}–${t.horarioFim}`;
 
-            onError: (erro) => {
-                console.error('Erro no Payment Brick:', erro);
-            },
+function blocoDiagnostico(d) {
+    if (d.adimplente && !Number(d.totalEmAberto)) {
+        return '<div class="diag ok"><i class="fas fa-circle-check"></i><div><strong>Financeiro em dia</strong><p>Nenhuma mensalidade em aberto.</p></div></div>';
+    }
+    if (d.adimplente) {
+        return `<div class="diag warn"><i class="fas fa-hourglass-half"></i><div><strong>${moeda(d.totalEmAberto)} em aberto, sem atraso</strong><p>${d.faturasPendentes} mensalidade(s) a vencer${d.faturasEmAnalise ? ` e ${d.faturasEmAnalise} em análise` : ''}. Elas continuam devidas mesmo após o cancelamento.</p></div></div>`;
+    }
+    return `<div class="diag danger"><i class="fas fa-triangle-exclamation"></i><div><strong>Pendência financeira: ${moeda(d.totalAtrasado)} em atraso</strong><p>${d.faturasAtrasadas} mensalidade(s) vencida(s) de um total de ${moeda(d.totalEmAberto)} em aberto. A administração considera isso na análise.</p></div></div>`;
+}
 
-            onSubmit: async ({ selectedPaymentMethod, formData }) => {
-                try {
-                    const metodo = (
-                        selectedPaymentMethod === 'bank_transfer'
-                        || formData.payment_method_id === 'pix'
-                    )
-                        ? 'pix'
-                        : formData.payment_method_id;
+async function telaMatricula(ctx) {
+    const c = await api.get(`${S}/cancelamento`);
+    const p = c.pendente;
+    ctx.el.innerHTML = html`
+        <div class="page-head">
+            <div><h1>Minha matrícula</h1><p>Suas turmas ativas, sua situação financeira e as solicitações de cancelamento.</p></div>
+            <div class="page-actions">${raw(!p && c.turmas.length ? '<button class="btn btn-danger" data-cancelar><i class="fas fa-user-xmark"></i> Solicitar cancelamento</button>' : '')}</div>
+        </div>
+        ${raw(p ? `<div class="status-banner info"><i class="fas fa-hourglass-half"></i><div><strong>Solicitação em análise</strong><p>Enviada ${relativo(p.solicitadoEm)} para ${p.turmas.map((t) => esc(t.nome)).join(', ')}. Você será notificado(a) assim que a administração responder. Enquanto isso, novas solicitações ficam bloqueadas.</p></div>${badge('EM_ANALISE', 'Em análise')}</div>` : '')}
+        <section class="grid grid-main ${p ? 'mt-4' : ''}">
+            <article class="panel">
+                <div class="panel-head"><div><h3>Turmas ativas</h3><span class="muted">${c.turmas.length} turma(s)</span></div></div>
+                ${raw(c.turmas.length ? `<ul class="list-plain">${c.turmas.map((t) => `<li><i class="fas ${esc(t.modalidadeIcone || 'fa-music')}" style="color:var(--amber);width:20px"></i><span style="flex:1"><strong>${esc(t.nome)}</strong><br><small class="faint">${esc(t.professorNome)} · ${esc(horarioTurma(t))} · ${esc(t.salaNome)}</small></span>${badge('', NIVEIS[t.nivel] || t.nivel)}</li>`).join('')}</ul>`
+                    : vazio('fa-layer-group', 'Nenhuma turma ativa', 'Explore as turmas disponíveis para voltar a dançar.', '<a class="btn btn-primary" href="#/explorar">Explorar turmas</a>'))}
+            </article>
+            <article class="panel">
+                <div class="panel-head"><h3>Situação financeira</h3></div>
+                ${raw(blocoDiagnostico(c.diagnostico))}
+                ${raw(c.diagnostico.abertas.length ? `<a class="btn btn-sm btn-block mt-4" href="#/financeiro">Ver mensalidades em aberto</a>` : '')}
+            </article>
+        </section>
+        <section class="panel mt-4">
+            <div class="panel-head"><div><h3>Histórico de solicitações</h3><span class="muted">Pareceres da administração ficam registrados aqui.</span></div></div>
+            ${raw(c.historico.length ? `<div class="feed">${c.historico.map((h) => `
+                <div class="feed-item ${h.status === 'RECUSADA' ? 'is-urgent' : ''}">
+                    <header><strong>${esc(h.turmas.map((t) => t.nome).join(', ') || 'Turmas encerradas')}</strong>${badge(h.status === 'SOLICITADA' ? 'EM_ANALISE' : h.status, h.status === 'SOLICITADA' ? 'Em análise' : undefined)}</header>
+                    <p class="meta">${esc(rotuloMotivo(h.motivo))} · solicitada em ${dataHora(h.solicitadoEm)}${h.avaliadoEm ? ` · respondida em ${dataHora(h.avaliadoEm)}${h.avaliadoPorNome ? ` por ${esc(h.avaliadoPorNome)}` : ''}` : ''}</p>
+                    <p class="muted" style="margin-top:6px">“${esc(h.justificativa)}”</p>
+                    ${h.resposta ? `<div class="parecer"><i class="fas fa-comment"></i><span><strong>Parecer da administração:</strong> ${esc(h.resposta)}</span></div>` : ''}
+                </div>`).join('')}</div>` : vazio('fa-clock-rotate-left', 'Nenhuma solicitação', 'Se precisar cancelar uma turma, use o botão acima.'))}
+        </section>`;
 
-                    if (!metodo) {
-                        throw new Error('Meio de pagamento não identificado.');
-                    }
-
-                    const dadosPagamento = {
-                        idFatura: fatura.id,
-                        token: formData.token || null,
-                        payment_method_id: metodo,
-                        installments: formData.installments
-                            ? Number(formData.installments)
-                            : null,
-                        issuer_id: formData.issuer_id
-                            ? Number(formData.issuer_id)
-                            : null
-                    };
-
-                    const resposta = await fetch(
-                        '/api/aluno/pagamentos/online',
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + token
-                            },
-                            body: JSON.stringify(dadosPagamento)
-                        }
-                    );
-
-                    const pagamento = await resposta.json();
-
-                    if (!resposta.ok) {
-                        throw new Error(
-                            pagamento.erro || 'Não foi possível processar o pagamento.'
-                        );
-                    }
-
-                    container.style.display = 'none';
-                    resultadoElemento.style.display = 'block';
-
-                    const titulo = document.getElementById(
-                        'resultado-pagamento-titulo'
-                    );
-
-                    const imagem = document.getElementById(
-                        'resultado-pix-qrcode'
-                    );
-
-                    const areaCopia = document.getElementById(
-                        'resultado-pix-copiacola'
-                    );
-
-                    const campoCopia = document.getElementById(
-                        'modal-pix-copiacola'
-                    );
-
-                    const mensagem = document.getElementById(
-                        'resultado-pagamento-mensagem'
-                    );
-
-                    const linkBoleto = document.getElementById(
-                        'resultado-boleto-link'
-                    );
-
-                    imagem.style.display = 'none';
-                    areaCopia.style.display = 'none';
-                    campoCopia.value = '';
-                    linkBoleto.style.display = 'none';
-                    linkBoleto.href = '#';
-
-                    if (metodo === 'pix') {
-                        titulo.textContent = 'PIX gerado';
-
-                        if (pagamento.qrCodeBase64) {
-                            imagem.src = 'data:image/png;base64,' +
-                                pagamento.qrCodeBase64;
-                            imagem.style.display = 'block';
-                        }
-
-                        if (pagamento.qrCode) {
-                            campoCopia.value = pagamento.qrCode;
-                            areaCopia.style.display = 'block';
-                        }
-
-                        mensagem.textContent =
-                            'Escaneie o QR Code ou copie o código PIX para realizar o pagamento.';
-                    } else if (pagamento.ticketUrl) {
-                        titulo.textContent = 'Boleto gerado';
-
-                        linkBoleto.href = pagamento.ticketUrl;
-                        linkBoleto.style.display = 'inline-block';
-
-                        mensagem.textContent =
-                            'Clique no botão abaixo para abrir e realizar o pagamento do boleto.';
-
-                    } else {
-                        titulo.textContent = 'Pagamento enviado';
-
-                        mensagem.textContent =
-                            'Status recebido: ' + pagamento.status +
-                            '. A confirmação depende do retorno do Mercado Pago.';
-                    }
-
-                    return Promise.resolve();
-
-                } catch (erro) {
-                    console.error('Erro ao processar pagamento:', erro);
-                    window.VibeUI.showToast(erro.message, 'error');
-                    throw erro;
-                }
-            }
-        }
+    ctx.el.onclick = (e) => {
+        if (e.target.closest('[data-cancelar]')) formCancelamento(c);
     };
-
-    paymentBrickController = await bricksBuilder.create(
-        'payment',
-        'paymentBrick_container',
-        settings
-    );
 }
 
-async function abrirModalPix(faturaId) {
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        window.VibeUI.showToast(
-            'Sua sessão expirou. Faça login novamente.',
-            'error'
-        );
-        return;
-    }
-
-    try {
-        const respostaFatura = await fetch(
-            `/api/aluno/faturas/${faturaId}`,
+function formCancelamento(c) {
+    modal({
+        titulo: 'Solicitar cancelamento',
+        subtitulo: 'Revise tudo antes de enviar. A administração analisa e responde pelo portal.',
+        confirmar: 'Enviar solicitação',
+        perigo: true,
+        etapas: [
             {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            }
-        );
-
-        if (!respostaFatura.ok) {
-            throw new Error('Não foi possível localizar esta fatura.');
-        }
-
-        const fatura = await respostaFatura.json();
-
-        faturaSelecionadaPix = fatura;
-
-        document.getElementById('modal-pix-fatura-titulo').textContent =
-            fatura.titulo || 'Fatura VibeDance';
-
-        document.getElementById('modal-pix-valor').textContent =
-            Number(fatura.valor).toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            });
-
-        window.VibeUI.openModal('modal-pix');
-
-        await inicializarPaymentBrick(fatura, token);
-
-    } catch (erro) {
-        console.error('Erro ao abrir pagamento:', erro);
-        window.VibeUI.showToast(erro.message, 'error');
-    }
-}
-
-window.abrirModalPix = abrirModalPix;
-
-
-function copiarPixChave() {
-    const input = document.getElementById('modal-pix-copiacola');
-
-    if (!input || !input.value) {
-        return;
-    }
-
-    navigator.clipboard.writeText(input.value)
-        .then(() => {
-            window.VibeUI.showToast('Código PIX copiado!', 'success');
-        })
-        .catch(() => {
-            input.select();
-            document.execCommand('copy');
-            window.VibeUI.showToast('Código PIX copiado!', 'success');
-        });
-}
-
-window.copiarPixChave = copiarPixChave;
-
-
-async function fecharModalPagamento() {
-    if (paymentBrickController) {
-        try {
-            await paymentBrickController.unmount();
-        } catch (erro) {
-            console.error('Erro ao fechar Payment Brick:', erro);
-        }
-
-        paymentBrickController = null;
-    }
-
-    faturaSelecionadaPix = null;
-
-    window.VibeUI.closeModal('modal-pix');
-}
-
-window.fecharModalPagamento = fecharModalPagamento;
-
-async function abrirModalUploadComprovante(faturaId) {
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        window.VibeUI.showToast('Sua sessão expirou. Faça login novamente.', 'error');
-        return
-    }
-
-    try {
-        const resposta = await fetch(`/api/aluno/faturas/${faturaId}`, {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        });
-
-        if (!resposta.ok) {
-            throw new Error('Não foi possível localizar esta fatura.');
-        }
-
-        const fatura = await resposta.json();
-
-        document.getElementById('modal-upload-fatura-id').value = fatura.id;
-        document.getElementById('modal-upload-titulo').textContent =
-            `${fatura.titulo} - ${Number(fatura.valor).toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            })}`;
-        document.getElementById('label-arquivo-selecionado').textContent =
-            'Clique para selecionar o comprovante';
-        document.getElementById('input-arquivo-comprovante').value = '';
-        document.getElementById('comprovante-obs').value = '';
-
-        window.VibeUI.openModal('modal-upload-comprovante');
-
-    } catch (erro) {
-        console.error('Erro ao abrir envio do comprovante:', erro);
-        window.VibeUI.showToast(erro.message, 'error');
-    }
-}
-
-window.abrirModalUploadComprovante = abrirModalUploadComprovante;
-
-function arquivoSelecionadoHandler(input) {
-    const file = input.files && input.files[0];
-
-    if (!file) {
-        return;
-    }
-
-    const extensoesPermitidas = ['pdf', 'jpg', 'jpeg', 'png'];
-    const extensao = file.name.split('.').pop().toLowerCase();
-
-    if (!extensoesPermitidas.includes(extensao)) {
-        window.VibeUI.showToast(
-            'Formato inválido. Envie PDF, JPG ou PNG.',
-            'error'
-        );
-        input.value = '';
-        return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-        window.VibeUI.showToast(
-            'O arquivo deve ter no máximo 5 MB.',
-            'error'
-        );
-        input.value = '';
-        return;
-    }
-
-    document.getElementById('label-arquivo-selecionado').innerHTML = `
-        <span style="color: var(--neon-emerald); font-weight: 700;">
-            <i class="fas fa-check-circle"></i> ${file.name}
-        </span>
-        <br>
-        <small style="color: var(--text-muted); font-size: 0.75rem;">
-            (${(file.size / 1024).toFixed(1)} KB)
-        </small>
-    `;
-}
-
-window.arquivoSelecionadoHandler = arquivoSelecionadoHandler;
-
-async function enviarComprovanteSubmit(event) {
-    event.preventDefault();
-
-    const faturaId = document.getElementById('modal-upload-fatura-id').value;
-    const arquivo = document.getElementById('input-arquivo-comprovante').files[0];
-    const observacao = document.getElementById('comprovante-obs').value.trim();
-
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        window.VibeUI.showToast('Sua sessão expirou. Faça login novamente.', 'error');
-        return;
-    }
-
-    if (!arquivo) {
-        window.VibeUI.showToast('Selecione um comprovante antes de enviar.', 'error');
-        return;
-    }
-
-    if (!faturaId) {
-        window.VibeUI.showToast('Não foi possível identificar a fatura.', 'error');
-        return;
-    }
-
-    const dados = new FormData();
-    dados.append('idFatura', faturaId);
-    dados.append('arquivo', arquivo);
-    dados.append('observacao', observacao);
-
-    try {
-
-        const resposta = await fetch('/api/aluno/comprovantes', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + token
+                titulo: 'Turmas',
+                html: `<p class="muted">Quais turmas você quer cancelar?</p>
+                    <div class="check-list mt-4">${c.turmas.map((t) => `<label class="check-item"><input type="checkbox" name="turmas" data-array value="${t.id}" ${c.turmas.length === 1 ? 'checked' : ''}><span class="grow">${esc(t.nome)}<small>${esc(t.professorNome)} · ${esc(horarioTurma(t))}</small></span></label>`).join('')}</div>`,
+                validar: (form) => (form.querySelectorAll('input[name=turmas]:checked').length ? true : 'Selecione ao menos uma turma.'),
             },
-            body: dados
-        });
-
-        const resultado = await resposta.json().catch(() => ({}));
-
-        if (!resposta.ok) {
-            throw new Error(resultado.erro || 'Não foi possível enviar o comprovante.');
-        }
-
-        window.VibeUI.closeModal('modal-upload-comprovante');
-
-        window.VibeUI.showToast(
-            resultado.mensagem || 'Comprovante enviado para análise.',
-            'success'
-        );
-
-        document.getElementById('form-upload-comprovante').reset();
-
-        const labelArquivo = document.getElementById('label-arquivo-selecionado');
-        if (labelArquivo) {
-            labelArquivo.textContent = 'Clique para selecionar o comprovante';
-        }
-
-        const usuario = window.VibeAuth.getUser();
-
-        if (usuario) {
-            await renderizarFaturasAluno(usuario.id);
-        }
-
-    } catch (erro) {
-        console.error('Erro ao enviar comprovante:', erro);
-        window.VibeUI.showToast(erro.message, 'error');
-    }
-}
-
-window.enviarComprovanteSubmit = enviarComprovanteSubmit;
-
-async function verComprovanteAluno(faturaId) {
-    const token = sessionStorage.getItem('vibedance_token');
-
-    if (!token) {
-        window.VibeUI.showToast('Sua sessão expirou. Faça login novamente.', 'error');
-        return;
-    }
-
-    const imgEl = document.getElementById('modal-ver-comprovante-img');
-    const pdfEl = document.getElementById('modal-ver-comprovante-pdf');
-    const nomeEl = document.getElementById('modal-ver-comprovante-nome');
-    const statusEl = document.getElementById('modal-ver-comprovante-status');
-    const dataEl = document.getElementById('modal-ver-comprovante-data');
-
-    try {
-        if (window.comprovanteObjetoUrlAtual) {
-            URL.revokeObjectURL(window.comprovanteObjetoUrlAtual);
-            window.comprovanteObjetoUrlAtual = null;
-        }
-
-        imgEl.src = '';
-        pdfEl.src = '';
-        imgEl.style.display = 'none';
-        pdfEl.style.display = 'none';
-
-        const respostaPagamentos = await fetch(
-            `/api/aluno/pagamentos/fatura/${faturaId}`,
             {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            }
-        );
-
-        if (!respostaPagamentos.ok) {
-            throw new Error('Não foi possível consultar o pagamento dessa fatura.');
-        }
-
-        const pagamentos = await respostaPagamentos.json();
-
-        if (!pagamentos.length) {
-            throw new Error('Nenhum pagamento encontrado para esta fatura.');
-        }
-
-        const pagamento = pagamentos.find(p => p.possuiComprovante);
-
-        if (!pagamento) {
-            throw new Error('Essa fatura ainda não possui comprovante enviado.');
-        }
-
-        const respostaArquivo = await fetch(
-            `/api/aluno/comprovantes/pagamento/${pagamento.id}`,
-            {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            }
-        );
-
-        if (!respostaArquivo.ok) {
-            throw new Error('Não foi possível carregar o arquivo do comprovante.');
-        }
-
-        const arquivo = await respostaArquivo.blob();
-        const nomeArquivo = pagamento.comprovanteNome || 'comprovante';
-        const tipoArquivo = arquivo.type.toLowerCase();
-
-        const urlArquivo = URL.createObjectURL(arquivo);
-        window.comprovanteObjetoUrlAtual = urlArquivo;
-
-        if (tipoArquivo.includes('pdf') || nomeArquivo.toLowerCase().endsWith('pdf')) {
-            pdfEl.src = urlArquivo;
-            pdfEl.style.display = 'block';
-        } else if (tipoArquivo.startsWith('image/')) {
-            imgEl.src = urlArquivo;
-            imgEl.style.display = 'block';
-        } else {
-            URL.revokeObjectURL(urlArquivo);
-            window.comprovanteObjetoUrlAtual = null;
-            throw new Error('Formato de comprovante não suportado para visualização.');
-        }
-
-        if (nomeEl) {
-            nomeEl.textContent = nomeArquivo;
-        }
-
-        if (statusEl) {
-            const st = pagamento.status || 'PENDENTE';
-
-            if (st === 'CONFIRMADO') {
-                statusEl.innerHTML = '<span class="badge badge-green"><i class="fas fa-check"></i> Pago & Confirmado</span>';
-            } else if (st === 'EM_ANALISE') {
-                statusEl.innerHTML = '<span class="badge badge-amber"><i class="fas fa-hourglass-half"></i> Em Análise</span>';
-            } else {
-                statusEl.innerHTML = `<span class="badge badge-cyan">${st}</span>`;
-            }
-        }
-
-        if (dataEl) {
-            dataEl.textContent = pagamento.comprovanteEnviadoEm
-                ? new Date(pagamento.comprovanteEnviadoEm).toLocaleString('pt-BR')
-                : 'Data não disponível';
-        }
-
-        window.VibeUI.openModal('modal-ver-comprovante');
-
-    } catch (erro) {
-        console.error('Erro ao visualizar comprovante:', erro);
-        window.VibeUI.showToast(erro.message, 'error');
-    }
+                titulo: 'Motivo',
+                html: `<div class="field"><label for="cc-motivo">Motivo principal</label><select class="input" id="cc-motivo" name="motivo" required><option value="">Selecione…</option>${MOTIVOS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
+                    <div class="field mt-4"><label for="cc-just">Conte um pouco mais</label><textarea class="input" id="cc-just" name="justificativa" maxlength="1000" required placeholder="Isso ajuda o estúdio a entender e, se possível, encontrar uma alternativa para você."></textarea><span class="hint"><span data-cont>0</span>/1000 · mínimo de 10 caracteres</span></div>`,
+                validar: (form) => (form.justificativa.value.trim().length >= 10 ? true : 'Escreva ao menos 10 caracteres na justificativa.'),
+            },
+            { titulo: 'Revisão', html: '<div id="cc-resumo"></div>' },
+        ],
+        onAbrir: (form) => {
+            const cont = form.querySelector('[data-cont]');
+            form.justificativa.addEventListener('input', () => { cont.textContent = form.justificativa.value.length; });
+            const resumo = () => {
+                const ids = [...form.querySelectorAll('input[name=turmas]:checked')].map((x) => Number(x.value));
+                const turmas = c.turmas.filter((t) => ids.includes(t.id));
+                form.querySelector('#cc-resumo').innerHTML = `
+                    <h4>Turmas que serão canceladas</h4>
+                    <ul class="list-plain">${turmas.map((t) => `<li><i class="fas fa-xmark danger"></i><span>${esc(t.nome)}<br><small class="faint">${esc(horarioTurma(t))}</small></span></li>`).join('')}</ul>
+                    <h4 class="mt-4">Situação financeira</h4>
+                    ${blocoDiagnostico(c.diagnostico)}
+                    <dl class="kv mt-4"><dt>Motivo</dt><dd>${esc(rotuloMotivo(form.motivo.value))}</dd><dt>Justificativa</dt><dd>${esc(form.justificativa.value.trim())}</dd></dl>
+                    <div class="callout warn mt-4"><i class="fas fa-circle-info"></i><span>Até a resposta, sua matrícula segue ativa e você não poderá abrir outra solicitação. Se aprovada, a vaga é liberada na hora.</span></div>`;
+            };
+            form.addEventListener('change', resumo);
+            form.addEventListener('input', resumo);
+            resumo();
+        },
+        onSubmit: async (_, form) => {
+            const turmas = [...form.querySelectorAll('input[name=turmas]:checked')].map((x) => Number(x.value));
+            await api.post(`${S}/cancelamento`, { turmas, motivo: form.motivo.value, justificativa: form.justificativa.value.trim() }, { silencioso: true });
+            toastOk('Solicitação enviada', 'Status: em análise. Você será notificado(a) da resposta.');
+        },
+    });
 }
 
-window.verComprovanteAluno = verComprovanteAluno;
-
-function fecharComprovanteAluno() {
-    if (window.comprovanteObjetoUrlAtual) {
-        URL.revokeObjectURL(window.comprovanteObjetoUrlAtual);
-        window.comprovanteObjetoUrlAtual = null;
-    }
-
-    const imgEl = document.getElementById('modal-ver-comprovante-img');
-    const pdfEl = document.getElementById('modal-ver-comprovante-pdf');
-
-    imgEl.src = '';
-    pdfEl.src = '';
-
-    imgEl.style.display = 'none';
-    pdfEl.style.display = 'none';
-
-    window.VibeUI.closeModal('modal-ver-comprovante');
-}
-
-window.fecharComprovanteAluno = fecharComprovanteAluno;
+// ======================================================================
+// Portal
+// ======================================================================
+criarPortal({
+    perfis: ['ALUNO', 'ADMINISTRADOR'],
+    nome: 'Portal do Aluno',
+    icone: 'fa-wave-square',
+    inicial: 'passaporte',
+    rotas: [
+        { id: 'passaporte', titulo: 'Meu passaporte', icone: 'fa-id-card', grupo: 'Eu', dominios: ['matriculas', 'financeiro', 'presencas', 'checkins', 'reposicoes', 'avaliacoes', 'turmas'], render: telaPassaporte },
+        { id: 'matricula', titulo: 'Minha matrícula', icone: 'fa-id-badge', grupo: 'Eu', dominios: ['cancelamentos', 'matriculas', 'financeiro', 'turmas'], render: telaMatricula },
+        { id: 'agenda', titulo: 'Agenda', icone: 'fa-calendar-check', grupo: 'Aulas', dominios: ['turmas', 'matriculas', 'checkins', 'reposicoes', 'presencas'], render: telaAgenda },
+        { id: 'frequencia', titulo: 'Frequência', icone: 'fa-calendar-days', grupo: 'Aulas', dominios: ['presencas', 'matriculas', 'reposicoes', 'checkins', 'turmas'], render: telaFrequencia },
+        { id: 'explorar', titulo: 'Explorar turmas', icone: 'fa-compass', grupo: 'Aulas', dominios: ['turmas', 'matriculas'], render: telaExplorar },
+        { id: 'evolucao', titulo: 'Evolução', icone: 'fa-chart-line', grupo: 'Aulas', dominios: ['avaliacoes', 'diario', 'presencas'], render: telaEvolucao },
+        { id: 'avisos', titulo: 'Avisos', icone: 'fa-bullhorn', grupo: 'Estúdio', dominios: ['comunicados'], render: telaAvisos },
+        { id: 'financeiro', titulo: 'Financeiro', icone: 'fa-wallet', grupo: 'Estúdio', dominios: ['financeiro'], render: telaFinanceiro },
+    ],
+    comandos: [
+        { titulo: 'Solicitar reposição', icone: 'fa-rotate', acao: () => { location.hash = '#/agenda'; } },
+        { titulo: 'Pagar mensalidade', icone: 'fa-wallet', acao: () => { location.hash = '#/financeiro'; } },
+        { titulo: 'Solicitar cancelamento de matrícula', icone: 'fa-user-xmark', acao: () => { location.hash = '#/matricula'; } },
+    ],
+    aoIniciar: {
+        contadores: async () => {
+            const f = await api.get(`${S}/financeiro`, { silencioso: true });
+            return { financeiro: f.resumo.atrasadas || 0 };
+        },
+    },
+});

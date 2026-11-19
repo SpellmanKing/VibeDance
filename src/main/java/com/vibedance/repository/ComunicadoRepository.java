@@ -12,4 +12,8 @@ public interface ComunicadoRepository extends JpaRepository<Comunicado, Integer>
     List<Comunicado> findByProfessorIdOrderByDataPostagemDesc(Integer professorId);
 
     List<Comunicado> findByTurmaIdInOrderByDataPostagemDesc(List<Integer> idsTurmas);
+
+    List<Comunicado> findAllByOrderByDataPostagemDesc();
+
+    List<Comunicado> findByTurmaIsNullOrderByDataPostagemDesc();
 }

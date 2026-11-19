@@ -1,5 +1,7 @@
 package com.vibedance.model;
 
+import com.vibedance.realtime.SincronizacaoEntityListener;
+
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -8,6 +10,7 @@ import java.time.LocalDateTime;
 import javax.annotation.processing.Generated;
 
 @Entity
+@EntityListeners(SincronizacaoEntityListener.class)
 @Table(name = "faturas")
 public class Fatura {
 
@@ -48,6 +51,25 @@ public class Fatura {
 
     @Column(name = "criado_em", insertable = false, updatable = false)
     private LocalDateTime criadoEm;
+    /** Preço cheio antes do desconto. valor = valorOriginal - desconto. */
+    @Column(name = "valor_original", nullable = false, precision = 10, scale = 2)
+    private BigDecimal valorOriginal;
+
+    @Column(name = "desconto", nullable = false, precision = 10, scale = 2)
+    private BigDecimal desconto = BigDecimal.ZERO;
+
+    @Column(name = "motivo_desconto", length = 30)
+    private String motivoDesconto;
+
+    @Column(name = "observacao", columnDefinition = "TEXT")
+    private String observacao;
+
+    @Column(name = "origem", nullable = false, length = 20)
+    private String origem = "LOTE";
+
+    @Column(name = "ajustado_em")
+    private LocalDateTime ajustadoEm;
+
 
     public Fatura() {
     }
@@ -142,5 +164,26 @@ public class Fatura {
 
     public LocalDateTime getCriadoEm() {
         return criadoEm;
+    }
+
+    public BigDecimal getValorOriginal() { return valorOriginal; }
+    public void setValorOriginal(BigDecimal valorOriginal) { this.valorOriginal = valorOriginal; }
+    public BigDecimal getDesconto() { return desconto == null ? BigDecimal.ZERO : desconto; }
+    public void setDesconto(BigDecimal desconto) { this.desconto = desconto; }
+    public String getMotivoDesconto() { return motivoDesconto; }
+    public void setMotivoDesconto(String motivoDesconto) { this.motivoDesconto = motivoDesconto; }
+    public String getObservacao() { return observacao; }
+    public void setObservacao(String observacao) { this.observacao = observacao; }
+    public String getOrigem() { return origem; }
+    public void setOrigem(String origem) { this.origem = origem; }
+    public LocalDateTime getAjustadoEm() { return ajustadoEm; }
+    public void setAjustadoEm(LocalDateTime ajustadoEm) { this.ajustadoEm = ajustadoEm; }
+
+    /** Antes de gravar: valor original nunca vazio (cobranças antigas/lote). */
+    @PrePersist
+    @PreUpdate
+    void completarValores() {
+        if (desconto == null) desconto = BigDecimal.ZERO;
+        if (valorOriginal == null && valor != null) valorOriginal = valor.add(desconto);
     }
 }

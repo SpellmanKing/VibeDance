@@ -1,8 +1,11 @@
 package com.vibedance.model;
 
+import com.vibedance.realtime.SincronizacaoEntityListener;
+
 import jakarta.persistence.*;
 
 @Entity
+@EntityListeners(SincronizacaoEntityListener.class)
 @Table(name = "salas")
 public class Sala {
 

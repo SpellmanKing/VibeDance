@@ -1,9 +1,12 @@
 package com.vibedance.model;
 
+import com.vibedance.realtime.SincronizacaoEntityListener;
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@EntityListeners(SincronizacaoEntityListener.class)
 @Table(name = "matriculas")
 public class Matricula {
 

@@ -11,4 +11,6 @@ public interface ModalidadeRepository
         extends JpaRepository<Modalidade, Integer> {
         
     List<Modalidade> findByStatusTrue(); // Retorna apenas modalidades ativas (US02)
+
+    List<Modalidade> findAllByOrderByNomeAsc();
 }

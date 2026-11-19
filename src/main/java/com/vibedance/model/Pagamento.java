@@ -1,10 +1,13 @@
 package com.vibedance.model;
 
+import com.vibedance.realtime.SincronizacaoEntityListener;
+
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
+@EntityListeners(SincronizacaoEntityListener.class)
 @Table(name = "pagamentos")
 public class Pagamento {
 
@@ -52,7 +55,42 @@ public class Pagamento {
     @Column(name = "criado_em", insertable = false, updatable = false)
     private LocalDateTime criadoEm;
 
+    /** Valor da fatura no momento do pagamento (antes de multa/juros/descontos). */
+    @Column(name = "valor_base", precision = 10, scale = 2)
+    private BigDecimal valorBase;
+
+    @Column(name = "parcelas")
+    private Integer parcelas;
+
+    /** Ex.: "Visa •••• 4242" ou "Boleto 23793.38128…" — nunca o número completo do cartão. */
+    @Column(name = "metodo_detalhe", length = 80)
+    private String metodoDetalhe;
+
     public Pagamento() {
+    }
+
+    public BigDecimal getValorBase() {
+        return valorBase;
+    }
+
+    public void setValorBase(BigDecimal valorBase) {
+        this.valorBase = valorBase;
+    }
+
+    public Integer getParcelas() {
+        return parcelas;
+    }
+
+    public void setParcelas(Integer parcelas) {
+        this.parcelas = parcelas;
+    }
+
+    public String getMetodoDetalhe() {
+        return metodoDetalhe;
+    }
+
+    public void setMetodoDetalhe(String metodoDetalhe) {
+        this.metodoDetalhe = metodoDetalhe;
     }
 
     public Integer getId() {

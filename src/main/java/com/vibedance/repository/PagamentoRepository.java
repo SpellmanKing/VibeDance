@@ -20,4 +20,10 @@ public interface PagamentoRepository extends JpaRepository<Pagamento, Integer> {
     );
 
     Optional<Pagamento> findByGatewayTransacaoId(String gatewayTransacaoId);
+
+    List<Pagamento> findAllByOrderByCriadoEmDesc();
+
+    List<Pagamento> findByIdFaturaOrderByCriadoEmDesc(Integer idFatura);
+
+    List<Pagamento> findByStatusOrderByCriadoEmDesc(String status);
 }

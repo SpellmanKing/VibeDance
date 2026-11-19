@@ -11,4 +11,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Usuario findByEmail(String email);
 
     List<Usuario> findByPerfilAndAtivoTrueOrderByNomeAsc(String perfil);
+
+    List<Usuario> findAllByOrderByNomeAsc();
+
+    List<Usuario> findByPerfilOrderByNomeAsc(String perfil);
+
+    boolean existsByCpf(String cpf);
+
+    long countByPerfilAndAtivoTrue(String perfil);
 }

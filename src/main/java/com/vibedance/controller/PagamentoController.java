@@ -96,31 +96,21 @@ public class PagamentoController {
             @PathVariable Integer id,
             @AuthenticationPrincipal Usuario usuario) {
 
+        byte[] pdf;
         try {
-            byte[] pdf = pagamentoService.gerarRecibo(
-                    id, usuario.getId()
-            );
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(
-                            HttpHeaders.CONTENT_DISPOSITION,
-                            ContentDisposition.attachment()
-                                    .filename(
-                                            "recibo-pagamento-" + id + ".pdf",
-                                            StandardCharsets.UTF_8
-                                    )
-                                    .build()
-                                    .toString()
-                    )
-                    .body(pdf);
-
+            pdf = pagamentoService.gerarRecibo(id, usuario.getId());
         } catch (NoSuchElementException e) {
-            return ResponseEntity.notFound().build();
-
+            // Antes: 404 sem corpo ("Erro 404" genérico na tela). Agora o aluno lê o motivo.
+            throw new com.vibedance.exception.RecursoNaoEncontradoException("Pagamento");
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(409).build();
+            throw new com.vibedance.exception.RegraNegocioException(
+                e.getMessage() == null ? "Não foi possível gerar o comprovante." : e.getMessage());
         }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("comprovante-vibedance-" + id + ".pdf", StandardCharsets.UTF_8).build().toString())
+                .body(pdf);
     }
 
     @PostMapping("/online")

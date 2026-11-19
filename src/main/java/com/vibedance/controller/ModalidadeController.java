@@ -10,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/modalidades")
-@CrossOrigin(origins = "*") // Permite requisições do frontend
 public class ModalidadeController {
 
     @Autowired

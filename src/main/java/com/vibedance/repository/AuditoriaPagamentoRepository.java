@@ -16,4 +16,6 @@ public interface AuditoriaPagamentoRepository extends JpaRepository<AuditoriaPag
     List<AuditoriaPagamento> findByIdUsuarioOperadorOrderByDataHoraDesc(
         Integer idUsuarioOperador
     );
+
+    List<AuditoriaPagamento> findTop300ByOrderByDataHoraDesc();
 }

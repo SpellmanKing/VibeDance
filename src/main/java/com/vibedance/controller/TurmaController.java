@@ -16,7 +16,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/turmas")
-@CrossOrigin(origins = "*")
 public class TurmaController {
 
     @Autowired

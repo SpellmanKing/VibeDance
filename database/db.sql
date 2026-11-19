@@ -1,9 +1,14 @@
 -- ==========================================================
 -- VibeDance - Esquema de Banco de Dados Relacional (PostgreSQL)
--- Plataforma Web para Gestão e Experiência de Aulas de Dança
+-- Plataforma Web para Gestão Operacional, Financeira e Acadêmica
+-- Arquitetura com Integridade Referencial, RBAC e Domínio @vibedance
 -- ==========================================================
 
+-- Extensão pgcrypto para hash seguro de senhas
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. Tabela de Usuários (Base para Aluno, Professor e Administrador)
+-- Possui trava estrita de domínio institucional (@vibedance.com ou @vibedance.com.br)
 CREATE TABLE IF NOT EXISTS usuarios (
     id_usuario SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
@@ -14,14 +19,32 @@ CREATE TABLE IF NOT EXISTS usuarios (
     avatar_url VARCHAR(255),
     tipo_perfil VARCHAR(20) NOT NULL CHECK (tipo_perfil IN ('ALUNO', 'PROFESSOR', 'ADMINISTRADOR')),
     ativo BOOLEAN DEFAULT TRUE,
-    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_email_dominio_vibedance CHECK (email ~* '^[A-Za-z0-9._%+-]+@vibedance\.com(\.br)?$')
 );
+
+-- Trigger de Segurança de Banco para bloquear qualquer tentativa fora do domínio @vibedance
+CREATE OR REPLACE FUNCTION fn_validar_dominio_vibedance()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.email IS NULL OR NEW.email !~* '^[A-Za-z0-9._%+-]+@vibedance\.com(\.br)?$' THEN
+        RAISE EXCEPTION 'Acesso restrito: apenas contas institucionais @vibedance.com ou @vibedance.com.br são permitidas no VibeDance.';
+    END IF;
+    NEW.email := LOWER(TRIM(NEW.email));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validar_dominio_vibedance ON usuarios;
+CREATE TRIGGER trg_validar_dominio_vibedance
+BEFORE INSERT OR UPDATE ON usuarios
+FOR EACH ROW EXECUTE FUNCTION fn_validar_dominio_vibedance();
 
 -- 2. Salas e Espaços Físicos do Estúdio
 CREATE TABLE IF NOT EXISTS salas (
     id_sala SERIAL PRIMARY KEY,
     nome VARCHAR(50) NOT NULL,
-    capacidade INT NOT NULL,
+    capacidade INT NOT NULL CHECK (capacidade > 0),
     recursos TEXT, -- Ex: 'Espelhos 360°, Piso Flutuante, Iluminação LED Cênica, Som Bluetooth 5.0'
     ativo BOOLEAN DEFAULT TRUE
 );
@@ -47,26 +70,26 @@ CREATE TABLE IF NOT EXISTS pacotes (
     ativo BOOLEAN DEFAULT TRUE
 );
 
--- 5. Turmas Regulares (Com alocação de Sala e Professor)
+-- 5. Turmas Regulares (Com alocação de Sala e Professor e Integridade Referencial)
 CREATE TABLE IF NOT EXISTS turmas (
     id_turma SERIAL PRIMARY KEY,
-    id_modalidade INT NOT NULL REFERENCES modalidades(id_modalidade) ON DELETE CASCADE,
-    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE RESTRICT,
-    id_sala INT REFERENCES salas(id_sala) ON DELETE SET NULL,
-    nome_turma VARCHAR(100),
+    id_modalidade INT NOT NULL REFERENCES modalidades(id_modalidade) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_sala INT REFERENCES salas(id_sala) ON DELETE SET NULL ON UPDATE CASCADE,
+    nome_turma VARCHAR(100) NOT NULL,
     dias_semana VARCHAR(100) NOT NULL, -- Ex: 'Segundas e Quartas'
     horario_inicio TIME NOT NULL,
     horario_fim TIME NOT NULL,
     nivel VARCHAR(30) DEFAULT 'INICIANTE' CHECK (nivel IN ('INICIANTE', 'INTERMEDIARIO', 'AVANCADO', 'TODOS_OS_NIVEIS')),
-    limite_vagas INT NOT NULL,
+    limite_vagas INT NOT NULL CHECK (limite_vagas > 0),
     ativo BOOLEAN DEFAULT TRUE
 );
 
 -- 6. Matrículas dos Alunos em Turmas
 CREATE TABLE IF NOT EXISTS matriculas (
     id_matricula SERIAL PRIMARY KEY,
-    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
-    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE ON UPDATE CASCADE,
     data_matricula TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) DEFAULT 'ATIVA' CHECK (status IN ('ATIVA', 'CANCELADA', 'TRANCADA', 'PENDENTE')),
     UNIQUE(id_aluno, id_turma)
@@ -75,8 +98,8 @@ CREATE TABLE IF NOT EXISTS matriculas (
 -- 7. Registro de Chamada Virtual / Frequência
 CREATE TABLE IF NOT EXISTS presencas (
     id_presenca SERIAL PRIMARY KEY,
-    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE,
-    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
     data_aula DATE NOT NULL,
     presente BOOLEAN NOT NULL DEFAULT TRUE,
     justificativa TEXT,
@@ -87,9 +110,9 @@ CREATE TABLE IF NOT EXISTS presencas (
 -- 8. Materiais de Apoio (Playlists, Vídeos de Coreografia, Exercícios)
 CREATE TABLE IF NOT EXISTS materiais_aula (
     id_material SERIAL PRIMARY KEY,
-    id_turma INT REFERENCES turmas(id_turma) ON DELETE CASCADE,
-    id_modalidade INT REFERENCES modalidades(id_modalidade) ON DELETE CASCADE,
-    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    id_turma INT REFERENCES turmas(id_turma) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_modalidade INT REFERENCES modalidades(id_modalidade) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
     titulo VARCHAR(150) NOT NULL,
     tipo VARCHAR(30) NOT NULL CHECK (tipo IN ('PLAYLIST', 'VIDEO_COREOGRAFIA', 'DOCUMENTO_PDF', 'LINK_EXTERNO')),
     url_conteudo VARCHAR(255) NOT NULL,
@@ -101,8 +124,8 @@ CREATE TABLE IF NOT EXISTS materiais_aula (
 -- 9. Mural de Comunicados das Turmas
 CREATE TABLE IF NOT EXISTS comunicados (
     id_comunicado SERIAL PRIMARY KEY,
-    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE,
-    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
     titulo VARCHAR(150) NOT NULL,
     conteudo TEXT NOT NULL,
     link_anexo VARCHAR(255),
@@ -110,27 +133,45 @@ CREATE TABLE IF NOT EXISTS comunicados (
     data_postagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. Agendamento de Aulas Particulares / Personal Dancer
+-- 10. Avaliações Técnicas & Feedback Individual de Coreografia (Novo Módulo Docente/Aluno)
+CREATE TABLE IF NOT EXISTS avaliacoes_tecnicas (
+    id_avaliacao SERIAL PRIMARY KEY,
+    id_turma INT NOT NULL REFERENCES turmas(id_turma) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_professor INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    coreografia_foco VARCHAR(150) NOT NULL,
+    nota_ritmo DECIMAL(3, 1) NOT NULL CHECK (nota_ritmo >= 0 AND nota_ritmo <= 10),
+    nota_tecnica DECIMAL(3, 1) NOT NULL CHECK (nota_tecnica >= 0 AND nota_tecnica <= 10),
+    nota_expressao DECIMAL(3, 1) NOT NULL CHECK (nota_expressao >= 0 AND nota_expressao <= 10),
+    nota_coreografia DECIMAL(3, 1) NOT NULL CHECK (nota_coreografia >= 0 AND nota_coreografia <= 10),
+    feedback_texto TEXT NOT NULL,
+    link_referencia VARCHAR(255),
+    data_avaliacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_avaliacoes_aluno ON avaliacoes_tecnicas(id_aluno, id_turma);
+
+-- 11. Agendamento de Aulas Particulares / Personal Dancer
 CREATE TABLE IF NOT EXISTS aulas_particulares (
     id_aula_particular SERIAL PRIMARY KEY,
-    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
-    id_professor INT REFERENCES usuarios(id_usuario) ON DELETE SET NULL,
-    id_modalidade INT NOT NULL REFERENCES modalidades(id_modalidade),
-    id_sala INT REFERENCES salas(id_sala) ON DELETE SET NULL,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_professor INT REFERENCES usuarios(id_usuario) ON DELETE SET NULL ON UPDATE CASCADE,
+    id_modalidade INT NOT NULL REFERENCES modalidades(id_modalidade) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_sala INT REFERENCES salas(id_sala) ON DELETE SET NULL ON UPDATE CASCADE,
     data_horario TIMESTAMP NOT NULL,
     duracao_minutos INT DEFAULT 60,
     status VARCHAR(20) DEFAULT 'SOLICITADO' CHECK (status IN ('SOLICITADO', 'CONFIRMADO', 'CONCLUIDO', 'CANCELADO')),
     observacoes TEXT
 );
 
--- 11. Módulo Financeiro: Faturas e Cobranças de Mensalidades
+-- 12. Módulo Financeiro: Faturas e Cobranças de Mensalidades
 CREATE TABLE IF NOT EXISTS faturas (
     id_fatura SERIAL PRIMARY KEY,
-    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
-    id_turma INT REFERENCES turmas(id_turma) ON DELETE SET NULL,
-    id_pacote INT REFERENCES pacotes(id_pacote) ON DELETE SET NULL,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_turma INT REFERENCES turmas(id_turma) ON DELETE SET NULL ON UPDATE CASCADE,
+    id_pacote INT REFERENCES pacotes(id_pacote) ON DELETE SET NULL ON UPDATE CASCADE,
     titulo VARCHAR(150) NOT NULL,
-    mes_referencia VARCHAR(7) NOT NULL, -- Ex: '2026-09'
+    mes_referencia VARCHAR(7) NOT NULL, -- Ex: '2026-11'
     valor DECIMAL(10, 2) NOT NULL,
     data_vencimento DATE NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE' CHECK (status IN ('PENDENTE', 'EM_ANALISE', 'CONFIRMADO', 'VENCIDO', 'CANCELADO')),
@@ -141,11 +182,11 @@ CREATE TABLE IF NOT EXISTS faturas (
 
 CREATE INDEX IF NOT EXISTS idx_faturas_aluno_status ON faturas(id_aluno, status);
 
--- 12. Histórico de Pagamentos, Transações e Comprovantes
+-- 13. Histórico de Pagamentos, Transações e Comprovantes
 CREATE TABLE IF NOT EXISTS pagamentos (
     id_pagamento SERIAL PRIMARY KEY,
-    id_fatura INT NOT NULL REFERENCES faturas(id_fatura) ON DELETE CASCADE,
-    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
+    id_fatura INT NOT NULL REFERENCES faturas(id_fatura) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_aluno INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
     forma_pagamento VARCHAR(30) NOT NULL CHECK (forma_pagamento IN ('PIX', 'CARTAO_CREDITO', 'BOLETO', 'COMPROVANTE_MANUAL')),
     valor_pago DECIMAL(10, 2) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE' CHECK (status IN ('PENDENTE', 'EM_ANALISE', 'CONFIRMADO', 'RECUSADO', 'ESTORNADO')),
@@ -161,11 +202,11 @@ CREATE TABLE IF NOT EXISTS pagamentos (
 
 CREATE INDEX IF NOT EXISTS idx_pagamentos_fatura ON pagamentos(id_fatura);
 
--- 13. Auditoria e Segurança de Transações (RBAC Compliance)
+-- 14. Auditoria e Segurança de Transações (RBAC Compliance)
 CREATE TABLE IF NOT EXISTS auditoria_pagamentos (
     id_auditoria SERIAL PRIMARY KEY,
     id_pagamento INT NOT NULL REFERENCES pagamentos(id_pagamento) ON DELETE CASCADE,
-    id_usuario_operador INT NOT NULL REFERENCES usuarios(id_usuario),
+    id_usuario_operador INT NOT NULL REFERENCES usuarios(id_usuario) ON DELETE CASCADE,
     acao VARCHAR(50) NOT NULL, -- 'CRIACAO', 'UPLOAD_COMPROVANTE', 'APROVACAO_MANUAL', 'REJEICAO_MANUAL', 'GATEWAY_WEBHOOK'
     status_anterior VARCHAR(20),
     status_novo VARCHAR(20),
@@ -178,7 +219,7 @@ CREATE TABLE IF NOT EXISTS auditoria_pagamentos (
 -- DADOS INICIAIS DE DEMONSTRAÇÃO (SEEDS)
 -- ==========================================================
 
--- Inserção de Usuários Base (1 Admin, 2 Professores, 4 Alunos)
+-- Inserção de Usuários Base (1 Admin, 2 Professores, 4 Alunos) - Todos com domínio @vibedance.com
 INSERT INTO usuarios (id_usuario, nome, cpf, email, senha, telefone, tipo_perfil) VALUES
 (1, 'Administrador Vibe', '000.000.000-01', 'admin@vibedance.com', crypt('admin123', gen_salt('bf', 10)), '(61) 99999-0001', 'ADMINISTRADOR'),
 (2, 'Prof. Diego Santos', '111.111.111-02', 'prof.diego@vibedance.com', crypt('prof123', gen_salt('bf', 10)), '(61) 99999-0002', 'PROFESSOR'),
@@ -243,6 +284,13 @@ INSERT INTO comunicados (id_comunicado, id_turma, id_professor, titulo, conteudo
 (2, 2, 3, 'Playlist da nova coreografia atualizada', 'Adicionei as 3 novas faixas que vamos usar no módulo de chão (floorwork). Ouçam para decorar os tempos fortes!', 'https://open.spotify.com/playlist/vibedance-jazzfunk', FALSE)
 ON CONFLICT (id_comunicado) DO NOTHING;
 
+-- Inserção de Avaliações Técnicas e Feedbacks Individuais
+INSERT INTO avaliacoes_tecnicas (id_avaliacao, id_turma, id_aluno, id_professor, coreografia_foco, nota_ritmo, nota_tecnica, nota_expressao, nota_coreografia, feedback_texto, link_referencia) VALUES
+(1, 1, 4, 2, 'Sequência Urban Groove - 8 Tempos', 9.5, 9.0, 9.8, 9.4, 'Excelente domínio de contratempo e isolamento de ombros! Continue trabalhando a transição rápida para o chão no compasso 4.', 'https://vibedance.studio/videos/hiphop-groove-intro.mp4'),
+(2, 2, 4, 3, 'Coreografia Release the Energy', 9.2, 8.8, 9.6, 9.2, 'Presença de palco incrível, Juliana! Foque apenas em estender mais a linha dos braços durante o giro duplo do refrão.', 'https://open.spotify.com/playlist/vibedance-jazzfunk'),
+(3, 1, 5, 2, 'Sequência Urban Groove - 8 Tempos', 8.8, 8.5, 8.7, 8.7, 'Ótima evolução no footwork, Lucas. Pratique a playlist em 100 BPM para ganhar ainda mais precisão nas travas.', NULL)
+ON CONFLICT (id_avaliacao) DO NOTHING;
+
 -- Inserção de Chamada / Presenças Registradas
 INSERT INTO presencas (id_turma, id_aluno, data_aula, presente) VALUES
 (1, 4, CURRENT_DATE, TRUE),
@@ -254,10 +302,10 @@ ON CONFLICT (id_turma, id_aluno, data_aula) DO NOTHING;
 
 -- Inserção de Faturas Demonstrativas
 INSERT INTO faturas (id_fatura, id_aluno, id_turma, id_pacote, titulo, mes_referencia, valor, data_vencimento, status, pix_copia_cola) VALUES
-(1, 4, 1, 1, 'Mensalidade Setembro/2026 - Hip Hop Mastercrew', '2026-09', 189.90, CURRENT_DATE + INTERVAL '5 days', 'CONFIRMADO', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCD'),
-(2, 5, 1, 1, 'Mensalidade Setembro/2026 - Hip Hop Mastercrew', '2026-09', 189.90, CURRENT_DATE + INTERVAL '5 days', 'EM_ANALISE', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCE'),
-(3, 6, 2, 1, 'Mensalidade Setembro/2026 - Jazz Funk Commercial', '2026-09', 189.90, CURRENT_DATE - INTERVAL '3 days', 'VENCIDO', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCF'),
-(4, 7, 1, 1, 'Mensalidade Setembro/2026 - Hip Hop Mastercrew', '2026-09', 189.90, CURRENT_DATE + INTERVAL '10 days', 'PENDENTE', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABDA')
+(1, 4, 1, 1, 'Mensalidade Novembro/2026 - Hip Hop Mastercrew', '2026-11', 189.90, CURRENT_DATE + INTERVAL '5 days', 'CONFIRMADO', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCD'),
+(2, 5, 1, 1, 'Mensalidade Novembro/2026 - Hip Hop Mastercrew', '2026-11', 189.90, CURRENT_DATE + INTERVAL '5 days', 'EM_ANALISE', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCE'),
+(3, 6, 2, 1, 'Mensalidade Novembro/2026 - Jazz Funk Commercial', '2026-11', 189.90, CURRENT_DATE - INTERVAL '3 days', 'VENCIDO', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABCF'),
+(4, 7, 1, 1, 'Mensalidade Novembro/2026 - Hip Hop Mastercrew', '2026-11', 189.90, CURRENT_DATE + INTERVAL '10 days', 'PENDENTE', '00020126580014br.gov.bcb.pix0136vibedance-financeiro-123455204000053039865406189.905802BR5915VibeDance Studio6008Brasilia62070503***6304ABDA')
 ON CONFLICT (id_fatura) DO NOTHING;
 
 -- Inserção de Pagamentos e Comprovantes
