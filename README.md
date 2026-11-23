@@ -22,6 +22,10 @@ Três portais, um único banco de dados e tudo sincronizado em tempo real.
 [Arquitetura](#-arquitetura) ·
 [Criadores](#-criadores)
 
+<br>
+
+📘 **[Manual completo do sistema (PDF)](docs/manual-vibedance.pdf)** · [versão em página web](docs/manual.html)
+
 </div>
 
 ---

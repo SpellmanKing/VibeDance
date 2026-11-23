@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manual do VibeDance</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: índice fixo à esquerda + coluna de leitura de ~70ch; capítulos por perfil com a cor do perfil (palco escuro por padrão, versão clara para quem prefere) */
+:root {
+  --bg: #0D0B0C;
+  --bg-2: #141113;
+  --surface: #1A1618;
+  --surface-2: #231E21;
+  --line: rgba(244, 236, 225, 0.12);
+  --line-soft: rgba(244, 236, 225, 0.07);
+  --ink: #F4EEE7;
+  --ink-2: #BCB1A7;
+  --ink-3: #8C8077;
+  --amber: #E8A653;
+  --amber-soft: rgba(232, 166, 83, 0.14);
+  --carmim: #E86F95;
+  --carmim-base: #DB4F7C;
+  --carmim-soft: rgba(219, 79, 124, 0.14);
+  --sage: #8FCFB4;
+  --sage-soft: rgba(120, 194, 164, 0.14);
+  --info: #8FA8D8;
+  --info-soft: rgba(143, 168, 216, 0.14);
+  --warn: #F0BD4F;
+  --warn-soft: rgba(240, 189, 79, 0.13);
+  --danger: #F2685B;
+  --code-bg: #090708;
+  --spot: rgba(232, 166, 83, 0.22);
+  --f-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --f-body: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #FBF7F2; --bg-2: #F4EDE5; --surface: #FFFFFF; --surface-2: #F6F0E9;
+    --line: rgba(43, 30, 36, 0.14); --line-soft: rgba(43, 30, 36, 0.08);
+    --ink: #221A1E; --ink-2: #5C5057; --ink-3: #85787F;
+    --amber: #A8621A; --amber-soft: rgba(197, 124, 40, 0.12);
+    --carmim: #B8325F; --carmim-base: #C93D6C; --carmim-soft: rgba(201, 61, 108, 0.10);
+    --sage: #2F7D5E; --sage-soft: rgba(47, 125, 94, 0.10);
+    --info: #3E5C99; --info-soft: rgba(62, 92, 153, 0.10);
+    --warn: #8A6410; --warn-soft: rgba(196, 146, 30, 0.13);
+    --danger: #B83A2E; --code-bg: #1C1518; --spot: rgba(232, 166, 83, 0.28);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #FBF7F2; --bg-2: #F4EDE5; --surface: #FFFFFF; --surface-2: #F6F0E9;
+  --line: rgba(43, 30, 36, 0.14); --line-soft: rgba(43, 30, 36, 0.08);
+  --ink: #221A1E; --ink-2: #5C5057; --ink-3: #85787F;
+  --amber: #A8621A; --amber-soft: rgba(197, 124, 40, 0.12);
+  --carmim: #B8325F; --carmim-base: #C93D6C; --carmim-soft: rgba(201, 61, 108, 0.10);
+  --sage: #2F7D5E; --sage-soft: rgba(47, 125, 94, 0.10);
+  --info: #3E5C99; --info-soft: rgba(62, 92, 153, 0.10);
+  --warn: #8A6410; --warn-soft: rgba(196, 146, 30, 0.13);
+  --danger: #B83A2E; --code-bg: #1C1518; --spot: rgba(232, 166, 83, 0.28);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 16px/1.7 var(--f-body); -webkit-font-smoothing: antialiased;
+}
+a { color: var(--amber); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
+code, kbd { font-family: var(--f-mono); font-size: 0.86em; }
+code { padding: 1px 6px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+kbd { display: inline-block; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line); border-bottom-width: 2px; background: var(--surface); color: var(--ink); line-height: 1.5; }
+strong { font-weight: 700; color: var(--ink); }
+h1, h2, h3, h4 { text-wrap: balance; margin: 0; }
+
+/* ------------------------------------------------ capa */
+.capa {
+  position: relative; overflow: hidden;
+  margin-top: calc(-1 * env(safe-area-inset-top, 0px));
+  padding-top: calc(env(safe-area-inset-top, 0px) + 3.5rem); padding-bottom: 3.5rem;
+  background:
+    radial-gradient(60% 90% at 72% -10%, var(--spot), transparent 70%),
+    radial-gradient(50% 70% at 0% 110%, var(--carmim-soft), transparent 70%),
+    var(--bg-2);
+  border-bottom: 1px solid var(--line);
+}
+.capa::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--amber), var(--carmim-base)); }
+.capa-in { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 3rem; align-items: end; }
+.marca { display: flex; align-items: center; gap: 14px; margin-bottom: 2rem; }
+.marca svg { width: 44px; height: 44px; flex: none; }
+.marca span { font: italic 600 1.35rem var(--f-display); }
+.eyebrow { font: 800 0.72rem/1.4 var(--f-body); letter-spacing: 0.18em; text-transform: uppercase; color: var(--carmim); }
+.capa h1 { margin-top: 0.6rem; font: 500 clamp(2.6rem, 6vw, 4.6rem)/1.02 var(--f-display); letter-spacing: -0.02em; }
+.capa h1 em { font-style: italic; color: var(--amber); }
+.capa .lead { margin: 1.25rem 0 0; max-width: 34rem; font-size: 1.12rem; color: var(--ink-2); }
+.capa-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 1.75rem; font-size: 0.86rem; color: var(--ink-3); }
+.capa-meta b { color: var(--ink-2); font-weight: 700; }
+.contagem { display: flex; gap: 14px; margin-top: 2rem; font: italic 500 1.5rem var(--f-display); color: var(--ink-3); }
+.contagem span { animation: conta 4s steps(1, end) infinite; }
+.contagem span:nth-child(2) { animation-delay: .5s } .contagem span:nth-child(3) { animation-delay: 1s } .contagem span:nth-child(4) { animation-delay: 1.5s }
+.contagem span:nth-child(5) { animation-delay: 2s } .contagem span:nth-child(6) { animation-delay: 2.5s } .contagem span:nth-child(7) { animation-delay: 3s } .contagem span:nth-child(8) { animation-delay: 3.5s }
+@keyframes conta { 0% { color: var(--amber); } 12.5%, 100% { color: var(--ink-3); } }
+
+.perfis { display: grid; gap: 10px; }
+.perfil {
+  --tom: var(--carmim); --tom-soft: var(--carmim-soft);
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); text-decoration: none; transition: border-color .2s, transform .2s;
+}
+.perfil:hover { border-color: var(--tom); transform: translateX(3px); }
+.perfil.prof { --tom: var(--amber); --tom-soft: var(--amber-soft); }
+.perfil.aluno { --tom: var(--sage); --tom-soft: var(--sage-soft); }
+.perfil .ic { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--tom-soft); color: var(--tom); }
+.perfil .ic svg { width: 20px; height: 20px; }
+.perfil b { display: block; font-weight: 700; }
+.perfil small { display: block; color: var(--ink-3); font-size: 0.82rem; line-height: 1.4; }
+.perfil .seta { color: var(--tom); font-weight: 800; }
+
+/* ------------------------------------------------ estrutura */
+.pagina { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 3rem 5rem; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 3.5rem; }
+.indice { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; padding-right: 6px; font-size: 0.88rem; }
+.indice-titulo { font: 800 0.7rem var(--f-body); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px; }
+.indice ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.indice a { display: flex; gap: 10px; padding: 6px 10px; border-radius: 8px; color: var(--ink-2); text-decoration: none; line-height: 1.35; border-left: 2px solid transparent; }
+.indice a .n { font: 500 0.78rem var(--f-mono); color: var(--ink-3); min-width: 1.4em; padding-top: 1px; }
+.indice a:hover { background: var(--surface); color: var(--ink); }
+.indice a.ativo { color: var(--ink); background: var(--surface); border-left-color: var(--amber); }
+.indice .sub a { padding-left: 34px; font-size: 0.82rem; color: var(--ink-3); }
+.indice .sub a.ativo { color: var(--ink); }
+.indice details summary { list-style: none; cursor: pointer; }
+.indice details summary::-webkit-details-marker { display: none; }
+.conteudo { min-width: 0; max-width: 46rem; }
+
+/* ------------------------------------------------ capítulos */
+.cap { padding-top: 1rem; margin-top: 4rem; border-top: 1px solid var(--line); }
+.cap:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+.cap-head { display: grid; gap: 10px; margin-bottom: 1.75rem; }
+.cap-num { font: 500 0.82rem var(--f-mono); color: var(--amber); letter-spacing: 0.04em; }
+.cap h2 { font: 500 clamp(1.9rem, 3.6vw, 2.6rem)/1.1 var(--f-display); letter-spacing: -0.015em; }
+.cap h2 em { font-style: italic; }
+.cap-lead { margin: 0; font-size: 1.08rem; color: var(--ink-2); max-width: 40rem; }
+.conteudo p { margin: 0 0 1rem; }
+.conteudo h3 { font: 600 1.25rem/1.3 var(--f-display); margin: 2.25rem 0 0.75rem; }
+.conteudo h4 { font: 800 0.74rem var(--f-body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); margin: 1.5rem 0 0.6rem; }
+.conteudo ul, .conteudo ol { margin: 0 0 1rem; padding-left: 1.3rem; }
+.conteudo li { margin: 0.3rem 0; }
+.conteudo li::marker { color: var(--ink-3); }
+
+/* faixa de perfil */
+.faixa { --tom: var(--carmim); --tom-soft: var(--carmim-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 14px 18px; border-radius: 14px; background: var(--tom-soft); border: 1px solid color-mix(in srgb, var(--tom) 35%, transparent); margin-bottom: 1.5rem; font-size: 0.92rem; }
+.faixa.prof { --tom: var(--amber); --tom-soft: var(--amber-soft); }
+.faixa.aluno { --tom: var(--sage); --tom-soft: var(--sage-soft); }
+.faixa b { color: var(--tom); }
+.faixa .tag { font: 800 0.7rem var(--f-body); letter-spacing: 0.14em; text-transform: uppercase; color: var(--tom); }
+
+/* tela (funcionalidade) */
+.tela { position: relative; margin: 2.25rem 0 0; padding: 1.5rem 1.5rem 1.25rem; border-radius: 18px; background: var(--surface); border: 1px solid var(--line-soft); scroll-margin-top: 24px; }
+.tela-topo { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 0.5rem; }
+.tela h3 { margin: 0; font: 600 1.4rem/1.25 var(--f-display); }
+.caminho { font: 500 0.78rem var(--f-mono); color: var(--ink-3); }
+.caminho b { color: var(--ink-2); font-weight: 500; }
+.tela > p:first-of-type { color: var(--ink-2); }
+.tela .passos { counter-reset: p; list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 8px; }
+.tela .passos li { counter-increment: p; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; margin: 0; }
+.tela .passos li::before { content: counter(p); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 0.78rem var(--f-body); background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); margin-top: 1px; }
+
+/* avisos */
+.nota { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; padding: 14px 16px; border-radius: 12px; margin: 1rem 0; font-size: 0.94rem; background: var(--info-soft); border: 1px solid color-mix(in srgb, var(--info) 30%, transparent); }
+.nota svg { width: 18px; height: 18px; margin-top: 4px; color: var(--info); }
+.nota.dica { background: var(--sage-soft); border-color: color-mix(in srgb, var(--sage) 30%, transparent); }
+.nota.dica svg { color: var(--sage); }
+.nota.atencao { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.nota.atencao svg { color: var(--warn); }
+.nota p:last-child { margin-bottom: 0; }
+
+/* tabelas */
+.tabela { overflow-x: auto; margin: 1rem 0 1.5rem; border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th { text-align: left; font: 800 0.7rem var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); background: var(--surface-2); padding: 11px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 11px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 700; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* código */
+.codigo { position: relative; margin: 0.75rem 0 1.25rem; border-radius: 12px; background: var(--code-bg); border: 1px solid var(--line); }
+.codigo pre { margin: 0; padding: 16px 18px; overflow-x: auto; font: 400 0.84rem/1.7 var(--f-mono); color: #EDE3D8; }
+.codigo .rot { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px 8px 18px; border-bottom: 1px solid rgba(244,236,225,0.08); font: 700 0.68rem var(--f-body); letter-spacing: 0.14em; text-transform: uppercase; color: #8C8077; }
+.copiar { font: 700 0.75rem var(--f-body); color: #EDE3D8; background: rgba(244,236,225,0.07); border: 1px solid rgba(244,236,225,0.14); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+.copiar:hover { border-color: #E8A653; color: #E8A653; }
+
+/* chips de status */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.5rem 0 1rem; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font: 700 0.76rem var(--f-body); background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); }
+.chip i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.chip.ok { color: var(--sage); } .chip.falta { color: var(--danger); } .chip.just { color: var(--info); } .chip.agenda { color: var(--amber); } .chip.sem { color: var(--ink-3); }
+
+/* jornada */
+.jornada { list-style: none; padding: 0; margin: 1.25rem 0 1.5rem; display: grid; gap: 0; }
+.jornada li { position: relative; display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 16px; padding: 0 0 18px; margin: 0; }
+.jornada li::before { content: ""; position: absolute; left: 45px; top: 30px; bottom: 0; width: 2px; background: var(--line); }
+.jornada li:last-child::before { display: none; }
+.jornada .quem { align-self: start; justify-self: center; position: relative; z-index: 1; font: 800 0.66rem var(--f-body); letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--sage-soft); color: var(--sage); border: 1px solid color-mix(in srgb, var(--sage) 35%, transparent); white-space: nowrap; }
+.jornada .quem.adm { background: var(--carmim-soft); color: var(--carmim); border-color: color-mix(in srgb, var(--carmim) 35%, transparent); }
+.jornada .quem.prof { background: var(--amber-soft); color: var(--amber); border-color: color-mix(in srgb, var(--amber) 35%, transparent); }
+.jornada .quem.sis { background: var(--surface-2); color: var(--ink-2); border-color: var(--line); }
+.jornada b { display: block; }
+.jornada span.d { color: var(--ink-2); font-size: 0.94rem; }
+
+/* glossário */
+dl.glossario { display: grid; grid-template-columns: minmax(0, 12rem) minmax(0, 1fr); gap: 0; margin: 1rem 0; border-top: 1px solid var(--line-soft); }
+dl.glossario dt, dl.glossario dd { padding: 12px 0; border-bottom: 1px solid var(--line-soft); margin: 0; }
+dl.glossario dt { font-weight: 700; padding-right: 16px; }
+dl.glossario dd { color: var(--ink-2); }
+
+/* créditos */
+.creditos { margin-top: 4rem; padding: 2rem; border-radius: 20px; background: radial-gradient(70% 120% at 100% 0%, var(--amber-soft), transparent 70%), var(--surface); border: 1px solid var(--line); }
+.creditos h2 { font: 500 1.8rem var(--f-display); }
+.equipe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 1.25rem; }
+.membro { display: grid; justify-items: start; gap: 10px; padding: 16px; border-radius: 14px; background: var(--bg-2); border: 1px solid var(--line-soft); }
+.membro .av { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font: 600 1rem var(--f-display); color: #0D0B0C; background: linear-gradient(135deg, #E8A653, #DB4F7C); }
+.membro b { line-height: 1.3; }
+.rodape { margin-top: 1.5rem; color: var(--ink-3); font-size: 0.85rem; }
+
+@media (max-width: 980px) {
+  .capa-in { grid-template-columns: 1fr; gap: 2rem; }
+  .pagina { grid-template-columns: 1fr; gap: 2rem; }
+  .indice { position: static; max-height: none; padding: 0; }
+  .indice details { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--surface); }
+  .indice details summary { display: flex; justify-content: space-between; }
+  .indice details summary::after { content: "+"; color: var(--amber); font-weight: 800; }
+  .indice details[open] summary::after { content: "–"; }
+  .indice details ol { margin-top: 10px; }
+  .equipe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 981px) {
+  .indice details summary { pointer-events: none; }
+  .indice details summary .abrir { display: none; }
+}
+
+/* ------------------------------------------------ impressão / PDF (A4) */
+@page { size: A4; margin: 16mm 0 18mm; }
+@page :first { margin: 0; }
+@media print {
+  html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--bg); }
+  html { scroll-behavior: auto; }
+  body { font-size: 10.5pt; line-height: 1.62; }
+  .capa { margin: 0; min-height: 297mm; padding: 34mm 0 26mm; display: flex; align-items: center; break-after: page; }
+  .capa-in { grid-template-columns: 1fr; gap: 14mm; max-width: none; padding: 0 20mm; }
+  .capa h1 { font-size: 46pt; }
+  .capa .lead { font-size: 13pt; max-width: none; }
+  .perfil { break-inside: avoid; }
+  .perfil:hover { transform: none; }
+  .contagem span { animation: none; }
+  .contagem span:first-child { color: var(--amber); }
+  .pagina { display: block; max-width: none; padding: 0 20mm; }
+  .indice { position: static; max-height: none; overflow: visible; padding: 0; break-after: page; font-size: 11.5pt; }
+  .indice details { border: 0; padding: 0; background: none; }
+  .indice details summary::after, .indice details[open] summary::after { content: none !important; }
+  .indice .indice-titulo { display: block; font: 500 26pt var(--f-display); letter-spacing: 0; text-transform: none; color: var(--ink); margin: 0 0 8mm; }
+  .indice ol { gap: 0; }
+  .indice a { padding: 3.2mm 0; border-left: 0; border-bottom: 1px solid var(--line-soft); border-radius: 0; color: var(--ink); background: none !important; }
+  .indice a .n { min-width: 2.4em; color: var(--amber); }
+  .indice .sub a { padding-left: 2.4em; color: var(--ink-2); font-size: 10pt; }
+  .conteudo { max-width: none; }
+  .cap { break-before: page; margin-top: 0; padding-top: 0; border-top: 0; }
+  .cap-head { margin-bottom: 7mm; }
+  .tela, .nota, .codigo, .jornada li, .membro, .faixa, dl.glossario dt, dl.glossario dd, tr { break-inside: avoid; }
+  .tela { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .tela-topo, .conteudo h3, .conteudo h4 { break-after: avoid; }
+  .tabela { overflow: visible; }
+  .copiar { display: none; }
+  .creditos { break-before: page; margin-top: 0; }
+  a { text-decoration: none; }
+}
+@media (max-width: 560px) {
+  .tela { padding: 1.15rem 1rem 1rem; }
+  dl.glossario { grid-template-columns: 1fr; }
+  dl.glossario dt { border-bottom: 0; padding-bottom: 0; }
+  .jornada li { grid-template-columns: 76px minmax(0, 1fr); gap: 12px; }
+  .jornada li::before { left: 37px; }
+}
+</style>
+
+</head>
+<body>
+<header class="capa">
+  <div class="capa-in">
+    <div>
+      <div class="marca" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="23" fill="#E8A653"/><path fill="#DB4F7C" d="M30.6 9.4c1.6.2 2.6 1.6 2.3 3.1-.2 1.4-1.5 2.4-2.9 2.2-1.5-.2-2.5-1.6-2.3-3 .2-1.5 1.5-2.5 2.9-2.3zM14 15.8l8.6 3.4 4.9-2.6c.8-.4 1.8-.2 2.3.6l1.2 2c.3.5.9.8 1.5.7l6.2-.8c.7-.1 1.2.8.7 1.3l-.3.3-7.4 2.2-3.4 4.3 1.6 7.6c.2.9-.4 1.7-1.3 1.8-.7.1-1.3-.3-1.6-.9l-3.2-7.1-5.8 4.6-4.4 4.6c-.5.5-1.3.4-1.6-.2-.2-.4-.1-.8.1-1.1l3.7-5.6 4.6-6.2-.9-3.4-8.5-.9c-.8-.1-1.2-1-.7-1.6.4-.4.9-.5 1.4-.3z"/></svg>
+        <span>VibeDance</span>
+      </div>
+      <p class="eyebrow">Manual do usuário · versão final</p>
+      <h1>Manual do <em>VibeDance</em></h1>
+      <p class="lead">Tudo o que o sistema faz, tela por tela, para o administrador, o professor e o aluno. Comece pelo capítulo 1 se for sua primeira vez; depois, vá direto ao portal que você usa.</p>
+      <div class="contagem" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+      <div class="capa-meta">
+        <span><b>Atualizado</b> em novembro de 2026</span>
+        <span><b>Endereço</b> http://localhost:8080</span>
+      </div>
+    </div>
+    <nav class="perfis" aria-label="Ir para o portal">
+      <a class="perfil" href="#adm"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l4.5 3.5L12 4l4.5 6.5L21 7l-2 11H5L3 7zm2 13h14v2H5v-2z"/></svg></span><span><b>Cockpit ADM</b><small>Grade, matrículas, financeiro e aprovações</small></span><span class="seta">→</span></a>
+      <a class="perfil prof" href="#prof"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.6A4 4 0 1 0 14 17V7h4V3h-6z"/></svg></span><span><b>Workspace do Professor</b><small>Chamada, diário, avaliações e avisos</small></span><span class="seta">→</span></a>
+      <a class="perfil aluno" href="#aluno"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 15c3 0 4-3 7-3s5 3 9 3v3c-4 0-6-2-9-2s-4 2-7 2v-3zm3-9a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm8 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg></span><span><b>Portal do Aluno</b><small>Agenda, frequência, evolução e pagamentos</small></span><span class="seta">→</span></a>
+    </nav>
+  </div>
+</header>
+
+<div class="pagina">
+  <aside class="indice" aria-label="Índice">
+    <details open id="indice-det">
+      <summary><span class="indice-titulo">Neste manual</span><span class="abrir" aria-hidden="true"></span></summary>
+      <ol>
+        <li><a href="#comece"><span class="n">1</span>Comece aqui</a></li>
+        <li><a href="#instalar"><span class="n">2</span>Instalar e ligar</a></li>
+        <li><a href="#acesso"><span class="n">3</span>Entrar e sua conta</a></li>
+        <li><a href="#comum"><span class="n">4</span>Em todas as telas</a></li>
+        <li><a href="#home"><span class="n">5</span>Página inicial</a></li>
+        <li><a href="#adm"><span class="n">6</span>Portal do ADM</a></li>
+        <li class="sub"><a href="#adm-financeiro">Financeiro</a></li>
+        <li><a href="#prof"><span class="n">7</span>Portal do Professor</a></li>
+        <li class="sub"><a href="#prof-chamada">Chamada</a></li>
+        <li><a href="#aluno"><span class="n">8</span>Portal do Aluno</a></li>
+        <li class="sub"><a href="#al-financeiro">Pagar mensalidade</a></li>
+        <li><a href="#fluxos"><span class="n">9</span>Fluxos completos</a></li>
+        <li><a href="#regras"><span class="n">10</span>Regras do sistema</a></li>
+        <li><a href="#problemas"><span class="n">11</span>Solução de problemas</a></li>
+        <li><a href="#glossario"><span class="n">12</span>Glossário</a></li>
+        <li><a href="#creditos"><span class="n">·</span>Criadores</a></li>
+      </ol>
+    </details>
+  </aside>
+
+  <main class="conteudo">
+
+    <!-- 1 ------------------------------------------------------------ -->
+    <section class="cap" id="comece">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 1</span>
+        <h2>Comece aqui</h2>
+        <p class="cap-lead">O VibeDance reúne a rotina de um estúdio de dança num só sistema: turmas, presença, evolução técnica, mensalidades e comunicação. Cada pessoa entra no seu portal e vê apenas o que lhe diz respeito.</p>
+      </div>
+
+      <h3>Os três perfis</h3>
+      <div class="tabela"><table>
+        <thead><tr><th>Perfil</th><th>Portal</th><th>Papel no estúdio</th></tr></thead>
+        <tbody>
+          <tr><td>ADM</td><td>Cockpit ADM</td><td>Administra tudo: cria contas e turmas, cobra mensalidades, aprova pedidos e acompanha os indicadores.</td></tr>
+          <tr><td>Professor</td><td>Workspace do Professor</td><td>Conduz as aulas: chamada, diário de classe, avaliações técnicas, reposições e avisos para as suas turmas.</td></tr>
+          <tr><td>Aluno</td><td>Portal do Aluno</td><td>Acompanha a própria rotina: agenda, frequência, evolução, avisos e pagamento das mensalidades.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Quatro ideias que valem para o sistema inteiro</h3>
+      <ul>
+        <li><strong>Tudo é em tempo real.</strong> Quando alguém muda algo (uma baixa, uma chamada, um aviso), as telas abertas de quem é afetado se atualizam sozinhas, sem recarregar.</li>
+        <li><strong>Nada se perde.</strong> Todas as informações ficam no banco de dados e cada criação, alteração ou aprovação fica registrada na auditoria.</li>
+        <li><strong>Cada um é avisado do que lhe importa.</strong> O sininho no topo mostra cobranças novas, pagamentos confirmados, reposições aprovadas e avisos publicados.</li>
+        <li><strong>Só contas @vibedance.com entram.</strong> E-mails de outros domínios são recusados, mesmo com a senha certa.</li>
+      </ul>
+
+      <div class="nota atencao">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm1 15h-2v2h2v-2zm0-7h-2v5h2v-5z"/></svg>
+        <div><p><strong>Pagamentos são simulados.</strong> PIX, cartão e boleto funcionam de ponta a ponta dentro do sistema (valores, comprovantes e baixas), mas nenhum dinheiro de verdade é cobrado. Não há ligação com banco ou operadora de cartão.</p></div>
+      </div>
+    </section>
+
+    <!-- 2 ------------------------------------------------------------ -->
+    <section class="cap" id="instalar">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 2</span>
+        <h2>Instalar e ligar</h2>
+        <p class="cap-lead">A preparação é feita uma única vez. Depois, ligar o sistema é um comando.</p>
+      </div>
+
+      <h3>O que instalar</h3>
+      <div class="tabela"><table>
+        <thead><tr><th>Programa</th><th>Versão</th><th>Para quê</th></tr></thead>
+        <tbody>
+          <tr><td>Java (JDK)</td><td>17 ou mais nova</td><td>Roda o servidor</td></tr>
+          <tr><td>Maven</td><td>recente</td><td>Compila e inicia o projeto</td></tr>
+          <tr><td>PostgreSQL</td><td>recente</td><td>Guarda os dados</td></tr>
+          <tr><td>Git</td><td>qualquer</td><td>Baixa o código</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="nota atencao">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm1 15h-2v2h2v-2zm0-7h-2v5h2v-5z"/></svg>
+        <div><p>O sistema procura o banco na <strong>porta 5433</strong>, no banco <code>vibedance_teste</code>. Ao instalar o PostgreSQL, informe a porta 5433 e anote a senha criada. Se preferir a porta padrão (5432), ajuste <code>spring.datasource.url</code> em <code>src/main/resources/application.properties</code>.</p></div>
+      </div>
+
+      <h3>Primeira vez: baixar e preparar o banco</h3>
+      <p>No PowerShell, rode as linhas abaixo em ordem. A cada comando do banco, ele pede a senha do PostgreSQL.</p>
+      <div class="codigo"><div class="rot">PowerShell<button class="copiar" type="button">Copiar</button></div><pre>git clone https://github.com/SpellmanKing/VibeDance.git
+cd VibeDance
+createdb -U postgres -p 5433 vibedance_teste
+psql -U postgres -p 5433 -d vibedance_teste -f database/db.sql
+psql -U postgres -p 5433 -d vibedance_teste -f database/migracao_v2_overhaul.sql
+psql -U postgres -p 5433 -d vibedance_teste -f database/migracao_v3_cancelamento_checkout.sql
+psql -U postgres -p 5433 -d vibedance_teste -f database/migracao_v4_solicitacoes_acesso.sql
+psql -U postgres -p 5433 -d vibedance_teste -f database/migracao_v5_cobranca_individual.sql</pre></div>
+      <p>O primeiro script cria as tabelas e os dados de demonstração. Os outros quatro atualizam a estrutura e podem ser rodados de novo sem estragar nada.</p>
+
+      <h3>Toda vez: ligar o sistema</h3>
+      <p>Com o PostgreSQL ligado, abra o PowerShell na pasta do projeto, troque <code>sua_senha</code> pela senha do banco e rode:</p>
+      <div class="codigo"><div class="rot">PowerShell<button class="copiar" type="button">Copiar</button></div><pre>$env:DB_USER="postgres"; $env:DB_PASSWORD="sua_senha"; $env:JWT_SECRET="um-texto-longo-e-aleatorio"
+mvn clean spring-boot:run</pre></div>
+      <p>Espere a linha <code>Started VibeDanceApplication</code> e abra <strong>http://localhost:8080</strong> no navegador. Mantenha o PowerShell aberto enquanto usa o sistema; para desligar, aperte <kbd>Ctrl</kbd> + <kbd>C</kbd> nele.</p>
+      <div class="nota">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+        <div><p>O banco precisa estar ligado <strong>antes</strong> do servidor: ao iniciar, o servidor confere todas as tabelas e para com erro se não conseguir conectar.</p></div>
+      </div>
+    </section>
+
+    <!-- 3 ------------------------------------------------------------ -->
+    <section class="cap" id="acesso">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 3</span>
+        <h2>Entrar e sua conta</h2>
+        <p class="cap-lead">O login fica na própria página inicial. O sistema reconhece o perfil da conta e leva cada pessoa ao seu portal.</p>
+      </div>
+
+      <h3>Como entrar</h3>
+      <ol>
+        <li>Abra <strong>http://localhost:8080</strong>.</li>
+        <li>No cartão <strong>Entrar</strong>, escolha o perfil (ADM, Professor ou Aluno). O cartão muda de cor e mostra um exemplo de e-mail daquele perfil.</li>
+        <li>Digite o e-mail institucional e a senha. Marque <em>Manter conectado neste dispositivo</em> se o computador for só seu.</li>
+        <li>Clique em <strong>Entrar</strong>.</li>
+      </ol>
+
+      <h3>Contas de demonstração</h3>
+      <p>Também aparecem em <em>Contas de demonstração</em>, no rodapé do cartão de login: um clique preenche e-mail e senha.</p>
+      <div class="tabela"><table>
+        <thead><tr><th>Perfil</th><th>E-mail</th><th>Senha</th></tr></thead>
+        <tbody>
+          <tr><td>ADM</td><td><code>admin@vibedance.com</code></td><td><code>admin123</code></td></tr>
+          <tr><td>Professor</td><td><code>prof.diego@vibedance.com</code><br><code>prof.camila@vibedance.com</code></td><td><code>prof123</code></td></tr>
+          <tr><td>Aluno</td><td><code>aluno.juliana@vibedance.com</code><br><code>aluno.lucas@vibedance.com</code><br><code>aluno.mariana@vibedance.com</code><br><code>aluno.gabriel@vibedance.com</code></td><td><code>aluno123</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="nota atencao">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm1 15h-2v2h2v-2zm0-7h-2v5h2v-5z"/></svg>
+        <div><p>Antes de usar o sistema com pessoas reais, troque as senhas de demonstração em <strong>Minha conta</strong>.</p></div>
+      </div>
+
+      <div class="tela" id="conta">
+        <div class="tela-topo"><h3>Minha conta</h3><span class="caminho">menu › <b>Conta › Minha conta</b></span></div>
+        <p>Existe nos três portais. É onde cada pessoa cuida dos próprios dados.</p>
+        <ul>
+          <li><strong>Foto de perfil:</strong> envie uma imagem JPG, PNG ou WebP de até 3 MB, ou remova a atual. A foto aparece no menu e nas listas do estúdio.</li>
+          <li><strong>Dados pessoais:</strong> nome, e-mail e o telefone para contato (o telefone pode ser editado).</li>
+          <li><strong>Turmas:</strong> o aluno vê as turmas em que está matriculado; o professor, as que leciona.</li>
+          <li><strong>Segurança:</strong> troca de senha, informando a senha atual, a nova e a confirmação.</li>
+        </ul>
+      </div>
+
+      <h3>Sair</h3>
+      <p>O botão de sair fica no rodapé do menu lateral, ao lado do seu nome. Use-o para trocar de conta.</p>
+    </section>
+
+    <!-- 4 ------------------------------------------------------------ -->
+    <section class="cap" id="comum">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 4</span>
+        <h2>O que existe em todas as telas</h2>
+        <p class="cap-lead">Os três portais têm a mesma estrutura. Aprendendo um, você sabe navegar nos outros.</p>
+      </div>
+      <div class="tabela"><table>
+        <thead><tr><th>Elemento</th><th>Onde fica</th><th>Para que serve</th></tr></thead>
+        <tbody>
+          <tr><td>Menu lateral</td><td>Esquerda</td><td>Todas as telas do portal, em grupos. O botão <kbd>«</kbd> recolhe o menu para ganhar espaço.</td></tr>
+          <tr><td>Caminho</td><td>Topo, à esquerda</td><td>Mostra onde você está (por exemplo, <em>Cockpit ADM › Financeiro</em>).</td></tr>
+          <tr><td>Busca rápida</td><td>Topo</td><td>Abre com <kbd>Ctrl</kbd> + <kbd>K</kbd> ou <kbd>/</kbd>. Encontra pessoas e turmas e executa ações como "Nova cobrança" ou "Publicar aviso". Use <kbd>↑</kbd> <kbd>↓</kbd> para escolher, <kbd>Enter</kbd> para abrir e <kbd>Esc</kbd> para fechar.</td></tr>
+          <tr><td>Selo Ao vivo</td><td>Topo, à direita</td><td>Mostra a conexão em tempo real. Pisca em âmbar com "Sincronizado" quando chega um dado novo; fica vermelho com "Reconectando" se a conexão cair.</td></tr>
+          <tr><td>Sininho</td><td>Topo, à direita</td><td>Notificações. Um ponto mostra quantas não foram lidas; cada uma leva à tela certa.</td></tr>
+          <tr><td>Painel lateral</td><td>Abre à direita</td><td>Ao clicar numa linha de lista (uma cobrança, um pedido), os detalhes abrem num painel sem sair da tela.</td></tr>
+          <tr><td>Janelas em etapas</td><td>Centro da tela</td><td>Cadastros maiores são divididos em etapas numeradas, com <em>Continuar</em> e <em>Voltar</em>.</td></tr>
+          <tr><td>Tabelas</td><td>Nas listas</td><td>Clique no título de uma coluna para ordenar. Use a busca e os filtros acima da tabela.</td></tr>
+          <tr><td>Mensagens rápidas</td><td>Canto da tela</td><td>Confirmam o que acabou de acontecer ("Baixa registrada") ou explicam um erro.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 5 ------------------------------------------------------------ -->
+    <section class="cap" id="home">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 5</span>
+        <h2>Página inicial e <em>Quero dançar</em></h2>
+        <p class="cap-lead">A página inicial é pública: qualquer pessoa a vê sem login. Ela apresenta o estúdio e é a porta de entrada de novos alunos.</p>
+      </div>
+
+      <div class="tela" id="home-vitrine">
+        <div class="tela-topo"><h3>Vitrine do estúdio</h3><span class="caminho">página inicial</span></div>
+        <p>Mostra, com dados reais do banco, o que o estúdio oferece.</p>
+        <ul>
+          <li><strong>Turmas:</strong> as turmas abertas, com vagas. Clicar numa turma abre o detalhe, com o botão para pedir a matrícula.</li>
+          <li><strong>Grade:</strong> a programação da semana, dia a dia.</li>
+          <li><strong>Equipe:</strong> os professores e o que cada um ensina.</li>
+          <li><strong>Cada perfil com o seu palco:</strong> um cartão por portal, com uma animação musical. Ao passar o mouse, toca uma trilha no ritmo da animação (o navegador só libera som depois do primeiro clique na página). O botão <em>Entrar como…</em> já escolhe o perfil no login.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="home-quero">
+        <div class="tela-topo"><h3>Quero dançar: pedir uma vaga</h3><span class="caminho">menu do topo › <b>Quero dançar</b></span></div>
+        <p>Quem ainda não é aluno pede para entrar por um formulário em quatro etapas, os "quatro tempos".</p>
+        <ol class="passos">
+          <li><div><strong>Você:</strong> nome, CPF, data de nascimento, e-mail e telefone.</div></li>
+          <li><div><strong>Seu ritmo:</strong> estilos de interesse, experiência e turmas desejadas.</div></li>
+          <li><div><strong>Sua rotina:</strong> dias disponíveis e objetivo.</div></li>
+          <li><div><strong>Revisão:</strong> conferência dos dados, aceite e envio.</div></li>
+        </ol>
+        <p>Ao enviar, a pessoa recebe um <strong>protocolo</strong> no formato <code>VD-XXXXXX</code>. Guarde-o: ele serve para acompanhar o pedido e, depois, para ativar o acesso.</p>
+      </div>
+
+      <div class="tela" id="home-ativar">
+        <div class="tela-topo"><h3>Acompanhar o pedido e ativar o acesso</h3><span class="caminho">Quero dançar › <b>Acompanhar</b></span></div>
+        <ol class="passos">
+          <li><div>Informe o protocolo e o e-mail usados no pedido. Uma linha do tempo mostra em que etapa ele está.</div></li>
+          <li><div>Quando o ADM aprova, a página libera a <strong>ativação</strong>: crie a sua senha (8 ou mais caracteres, com letras e números).</div></li>
+          <li><div>Pronto: entre com o e-mail @vibedance.com que o estúdio criou para você.</div></li>
+        </ol>
+        <div class="nota">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <div><p>O convite de ativação vale <strong>14 dias</strong> e só pode ser usado uma vez. Se vencer, peça ao estúdio para renová-lo.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 ------------------------------------------------------------ -->
+    <section class="cap" id="adm">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 6</span>
+        <h2>Portal do ADM <em>· Cockpit</em></h2>
+        <p class="cap-lead">O ADM rege o estúdio: é o único perfil que cria contas e turmas, cobra mensalidades e aprova pedidos.</p>
+      </div>
+      <div class="faixa"><span class="tag">ADM</span><span>Menu em quatro grupos: <b>Inteligência</b>, <b>Operação</b>, <b>Gestão</b> e <b>Segurança</b>.</span></div>
+
+      <div class="tela" id="adm-visao">
+        <div class="tela-topo"><h3>Visão do estúdio</h3><span class="caminho">Inteligência › <b>Visão do estúdio</b></span></div>
+        <p>O painel de abertura, calculado na hora a partir do banco.</p>
+        <ul>
+          <li><strong>Indicadores:</strong> receita mensal recorrente, inadimplência, ocupação média das turmas e retenção de alunos.</li>
+          <li><strong>Gráficos:</strong> evolução financeira, alunos por modalidade e lotação por turma.</li>
+          <li><strong>Pendências:</strong> o que está esperando uma decisão sua, com atalho para a tela certa.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="adm-grade">
+        <div class="tela-topo"><h3>Grade horária</h3><span class="caminho">Operação › <b>Grade horária</b></span></div>
+        <p>A matriz semanal de salas, professores e lotação, e a lista de todas as turmas.</p>
+        <h4>Criar uma turma</h4>
+        <ol class="passos">
+          <li><div>Clique em <strong>Nova turma</strong>.</div></li>
+          <li><div>Preencha nome, modalidade, nível, dias, horário de início e término, sala, professor e limite de vagas.</div></li>
+          <li><div>Salve. O sistema confere a grade antes: se a sala ou o professor já tiverem aula naquele horário, a turma não é salva e o conflito é mostrado.</div></li>
+        </ol>
+        <p>Na lista de turmas, o lápis edita e o ícone de caixa <strong>encerra</strong> a turma. O limite de vagas nunca passa da capacidade da sala.</p>
+      </div>
+
+      <div class="tela" id="adm-reposicoes">
+        <div class="tela-topo"><h3>Reposições</h3><span class="caminho">Operação › <b>Reposições</b></span></div>
+        <p>Todas as reposições e aulas experimentais pedidas pelos alunos, de todas as turmas. Normalmente quem decide é o professor da turma de destino, mas o ADM também pode <strong>Aprovar</strong> ou <strong>Recusar</strong>. Aprovada, o aluno entra na chamada daquela data.</p>
+      </div>
+
+      <div class="tela" id="adm-acessos">
+        <div class="tela-topo"><h3>Pedidos de acesso</h3><span class="caminho">Operação › <b>Pedidos de acesso</b></span></div>
+        <p>Os pedidos feitos em <em>Quero dançar</em>. No topo: novos pedidos, em contato, convites pendentes e novos alunos no mês.</p>
+        <ol class="passos">
+          <li><div>Abra um pedido para ver os dados, os interesses e os alertas (por exemplo, um CPF que já tem conta).</div></li>
+          <li><div>Clique em <strong>Marcar contato</strong> quando falar com a pessoa. Use a <strong>nota interna</strong> para registrar a conversa; o interessado não a vê.</div></li>
+          <li><div>Clique em <strong>Aprovar</strong>: confirme o e-mail institucional sugerido (no formato <code>aluno.nome.sobrenome@vibedance.com</code>) e escolha as turmas. Turmas lotadas ficam indisponíveis.</div></li>
+          <li><div>O sistema cria a conta e as matrículas e mostra o <strong>convite</strong>: envie por WhatsApp ou copie a mensagem.</div></li>
+        </ol>
+        <p>Para recusar, escreva uma resposta de pelo menos 10 caracteres; a pessoa a vê pelo protocolo. Convites vencidos podem ser <strong>renovados</strong>. No topo da tela, <strong>Copiar link do formulário</strong> copia o endereço do <em>Quero dançar</em> e <strong>Criar conta direto</strong> pula o pedido.</p>
+      </div>
+
+      <div class="tela" id="adm-cancelamentos">
+        <div class="tela-topo"><h3>Cancelamentos</h3><span class="caminho">Operação › <b>Cancelamentos</b></span></div>
+        <p>Os pedidos de cancelamento de matrícula enviados pelos alunos, com as turmas e o motivo.</p>
+        <ul>
+          <li><strong>Aprovar:</strong> desvincula o aluno das turmas escolhidas e libera as vagas na hora.</li>
+          <li><strong>Recusar ou reter:</strong> exige um parecer, que o aluno lê no portal.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="adm-avisos">
+        <div class="tela-topo"><h3>Avisos</h3><span class="caminho">Operação › <b>Avisos</b></span></div>
+        <p>O mural de comunicados do estúdio, o mesmo nos três portais. Os filtros no topo separam <em>Todos</em>, <em>Urgentes</em>, <em>Do estúdio</em> e <em>Turmas</em>, com a contagem de cada um.</p>
+        <h4>Publicar um aviso</h4>
+        <ol class="passos">
+          <li><div>Clique em <strong>Publicar aviso</strong>.</div></li>
+          <li><div>Escolha para quem: <strong>Todo o estúdio</strong> ou uma turma.</div></li>
+          <li><div>Escreva o título (até 150 caracteres) e a mensagem. Se quiser, adicione um link (playlist, vídeo, documento) e marque <strong>urgente</strong>.</div></li>
+          <li><div>Confira a prévia ao lado e clique em <strong>Publicar agora</strong>. Os destinatários são notificados.</div></li>
+        </ol>
+      </div>
+
+      <div class="tela" id="adm-financeiro">
+        <div class="tela-topo"><h3>Financeiro</h3><span class="caminho">Gestão › <b>Financeiro</b></span></div>
+        <p>Cobranças, pagamentos e relatórios. No topo: recebido no mês, em aberto, atrasado e comprovantes para conferir. A tela tem três abas.</p>
+
+        <h4>Aba Mensalidades</h4>
+        <p>Todas as cobranças, com busca e filtros por situação (pendentes, atrasadas, em análise, pagas) e por mês. O preço cheio aparece riscado quando há desconto. Cada cobrança em aberto tem três ações:</p>
+        <div class="tabela"><table>
+          <thead><tr><th>Ação</th><th>O que faz</th></tr></thead>
+          <tbody>
+            <tr><td>Dar baixa</td><td>Registra um pagamento recebido por fora do sistema: valor, forma (PIX, cartão, boleto, dinheiro ou outro) e observação. O aluno vê a cobrança como paga na hora.</td></tr>
+            <tr><td>Ajustar</td><td>Dá, troca ou remove um desconto e muda o vencimento (ícone de etiqueta). Detalhes abaixo.</td></tr>
+            <tr><td>Cancelar</td><td>A cobrança deixa de existir para o aluno. O motivo é obrigatório.</td></tr>
+          </tbody>
+        </table></div>
+        <p>Clicar numa cobrança abre o painel com o código PIX, os pagamentos registrados e, para os pagos, o <strong>comprovante em PDF</strong>.</p>
+
+        <h4>Gerar em lote: a mensalidade do mês para todos</h4>
+        <ol class="passos">
+          <li><div>Clique em <strong>Gerar em lote</strong>.</div></li>
+          <li><div>Informe o mês de referência, o vencimento e o valor por matrícula.</div></li>
+          <li><div>Escolha <em>Todos com matrícula ativa</em> ou selecione alunos.</div></li>
+          <li><div>Revise e gere. Cada matrícula ganha uma cobrança e cada aluno, uma notificação. Quem já tem cobrança naquele mês é ignorado.</div></li>
+        </ol>
+
+        <h4>Nova cobrança: um aluno, uma condição especial</h4>
+        <ol class="passos">
+          <li><div>Clique em <strong>Nova cobrança</strong> e busque o aluno. Cada um aparece com as turmas e os meses já cobrados.</div></li>
+          <li><div>Escolha o que cobrar: a mensalidade de uma turma ou uma <strong>cobrança avulsa</strong> (taxa de matrícula, figurino, workshop, aula particular).</div></li>
+          <li><div>Confira mês, vencimento e valor cheio.</div></li>
+          <li><div>Escolha a condição especial e o desconto. A prévia à direita mostra o recibo exatamente como o aluno vai ver.</div></li>
+          <li><div>Clique em <strong>Lançar cobrança</strong>.</div></li>
+        </ol>
+        <div class="tabela"><table>
+          <thead><tr><th>Condição</th><th>Quando usar</th></tr></thead>
+          <tbody>
+            <tr><td>Recém-chegado</td><td>Aluno que entrou no meio do mês: cobra só os dias a partir da primeira aula. Quem se matriculou no mês já vem com essa opção sugerida.</td></tr>
+            <tr><td>Bolsa</td><td>Bolsa integral ou parcial.</td></tr>
+            <tr><td>Família</td><td>Irmãos, pais e filhos dançando juntos.</td></tr>
+            <tr><td>Convênio</td><td>Empresa ou escola parceira.</td></tr>
+            <tr><td>Antecipado</td><td>Quem paga adiantado.</td></tr>
+            <tr><td>Negociação</td><td>Acordo combinado com o aluno.</td></tr>
+            <tr><td>Promoção</td><td>Campanha do estúdio.</td></tr>
+            <tr><td>Cortesia</td><td>Agrado pontual.</td></tr>
+            <tr><td>Outro</td><td>Qualquer outra condição; explique na observação interna.</td></tr>
+          </tbody>
+        </table></div>
+        <p>O desconto pode ser em porcentagem ou em reais, com atalhos de 10% a 50%. Se o vencimento padrão (dia 10) já passou, o sistema sugere uma data 5 dias à frente.</p>
+
+        <h4>Ajustar uma cobrança que já existe</h4>
+        <p>No ícone de etiqueta da cobrança (ou em <em>Ajustar / desconto</em> no painel), escolha a condição, o desconto e, se quiser, um novo vencimento. A prévia mostra o valor antes e depois. Ao salvar, o código PIX é refeito e o aluno é avisado.</p>
+
+        <h4>Aba Comprovantes</h4>
+        <p>Os comprovantes enviados pelos alunos que pagaram por fora. Para cada um: <strong>Ver arquivo</strong>, <strong>Aprovar</strong> (a cobrança fica paga) ou <strong>Recusar</strong> com o motivo (o aluno pode reenviar).</p>
+
+        <h4>Aba Planilha financeira</h4>
+        <p>Todos os lançamentos, com filtros por situação, período e busca, e os totais. <strong>Exportar PDF</strong> gera um relatório com o visual do estúdio: indicadores, resumo mensal, recebimentos por forma de pagamento, a tabela completa e um código de autenticação. Também há exportação em CSV.</p>
+        <div class="nota dica">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 21h6v-1H9v1zm3-19a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>
+          <div><p><strong>Atualizar atrasadas</strong> marca na hora como atrasadas as cobranças vencidas. O sistema já faz isso sozinho toda madrugada.</p></div>
+        </div>
+      </div>
+
+      <div class="tela" id="adm-usuarios">
+        <div class="tela-topo"><h3>Usuários e matrículas</h3><span class="caminho">Gestão › <b>Usuários e matrículas</b></span></div>
+        <p>Todas as contas do estúdio, filtradas por perfil.</p>
+        <ul>
+          <li><strong>Novo usuário:</strong> nome completo, CPF, telefone, e-mail institucional (@vibedance.com), perfil e senha inicial.</li>
+          <li><strong>Editar:</strong> muda os dados e, se preciso, define uma nova senha.</li>
+          <li><strong>Suspender ou reativar:</strong> uma conta suspensa não consegue entrar.</li>
+          <li><strong>Matrículas:</strong> matricule um aluno em uma ou mais turmas de uma vez.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="adm-catalogo">
+        <div class="tela-topo"><h3>Salas e modalidades</h3><span class="caminho">Gestão › <b>Salas e modalidades</b></span></div>
+        <p>Os espaços físicos e os estilos de dança oferecidos. Use <strong>Nova sala</strong> (com a capacidade) e <strong>Nova modalidade</strong>. A capacidade da sala limita as vagas das turmas que a usam.</p>
+      </div>
+
+      <div class="tela" id="adm-auditoria">
+        <div class="tela-topo"><h3>Auditoria</h3><span class="caminho">Segurança › <b>Auditoria</b></span></div>
+        <p>O registro de tudo o que aconteceu: quando, quem, com qual perfil, qual ação, em qual registro e de qual endereço IP. Logins e tentativas bloqueadas também aparecem aqui.</p>
+      </div>
+    </section>
+
+    <!-- 7 ------------------------------------------------------------ -->
+    <section class="cap" id="prof">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 7</span>
+        <h2>Portal do Professor <em>· Workspace</em></h2>
+        <p class="cap-lead">O professor vê apenas as próprias turmas e cuida do que acontece em sala. O ADM também consegue abrir este portal.</p>
+      </div>
+      <div class="faixa prof"><span class="tag">Professor</span><span>Menu em três grupos: <b>Aulas</b>, <b>Didática</b> e <b>Comunicação</b>.</span></div>
+
+      <div class="tela" id="prof-hoje">
+        <div class="tela-topo"><h3>Hoje no estúdio</h3><span class="caminho">Aulas › <b>Hoje no estúdio</b></span></div>
+        <p>A tela de abertura do professor.</p>
+        <ul>
+          <li>Contagem regressiva para a próxima aula e atalho para a chamada.</li>
+          <li><strong>Linha do tempo de hoje</strong> com todas as aulas do dia.</li>
+          <li><strong>Próximos 7 dias</strong>.</li>
+          <li>Números das suas turmas, alunos e frequência média dos últimos 30 dias.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="prof-chamada">
+        <div class="tela-topo"><h3>Chamada</h3><span class="caminho">Aulas › <b>Chamada</b></span></div>
+        <p>Um toque por aluno. Cada marcação vai na hora para o histórico do aluno e para os relatórios do ADM.</p>
+        <ol class="passos">
+          <li><div>Escolha a aula (a de hoje já vem selecionada).</div></li>
+          <li><div>Para cada aluno, marque a situação:</div></li>
+        </ol>
+        <div class="chips"><span class="chip ok"><i></i>Presente</span><span class="chip falta"><i></i>Falta</span><span class="chip just"><i></i>Falta justificada</span></div>
+        <p>A taxa de presença da aula é atualizada a cada toque. Alunos com reposição aprovada para a data aparecem na lista daquele dia.</p>
+        <div class="nota">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <div><p>A <strong>falta justificada</strong> é decisão do professor e não conta contra a frequência do aluno.</p></div>
+        </div>
+      </div>
+
+      <div class="tela" id="prof-turmas">
+        <div class="tela-topo"><h3>Minhas turmas e avaliações técnicas</h3><span class="caminho">Didática › <b>Minhas turmas</b></span></div>
+        <p>Os alunos de cada turma, com a frequência de cada um. Daqui o professor registra a <strong>avaliação técnica</strong>:</p>
+        <ul>
+          <li>a coreografia ou sequência avaliada;</li>
+          <li>notas de 0 a 10 em <strong>Ritmo</strong>, <strong>Técnica</strong>, <strong>Expressão</strong> e <strong>Coreografia</strong>;</li>
+          <li>um feedback escrito para o aluno e, se quiser, um vídeo ou referência.</li>
+        </ul>
+        <p>O aluno vê a avaliação na tela Evolução, com a média técnica ao longo do tempo.</p>
+      </div>
+
+      <div class="tela" id="prof-diario">
+        <div class="tela-topo"><h3>Diário de classe</h3><span class="caminho">Didática › <b>Diário de classe</b></span></div>
+        <p>O registro de cada aula: data, conteúdo trabalhado, coreografia (repertório), links de referência e observações. Os alunos veem o repertório na tela Evolução. Um registro feito por engano pode ser excluído.</p>
+      </div>
+
+      <div class="tela" id="prof-reposicoes">
+        <div class="tela-topo"><h3>Reposições</h3><span class="caminho">Didática › <b>Reposições</b></span></div>
+        <p>Alunos de outras turmas que pediram para fazer aula numa turma sua, como reposição ou aula experimental.</p>
+        <ul>
+          <li><strong>Aguardando sua decisão:</strong> aprove ou recuse. Aprovado, o aluno entra na sua chamada daquela data e é notificado.</li>
+          <li><strong>Agendadas e recentes:</strong> o histórico das decisões.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="prof-avisos">
+        <div class="tela-topo"><h3>Avisos</h3><span class="caminho">Comunicação › <b>Avisos</b></span></div>
+        <p>O mesmo mural do estúdio. O professor publica avisos <strong>para as próprias turmas</strong>, com o mesmo editor e prévia do ADM; os avisos para o estúdio todo são do ADM. Os avisos escritos por você aparecem com a marca "Publicado por você".</p>
+      </div>
+    </section>
+
+    <!-- 8 ------------------------------------------------------------ -->
+    <section class="cap" id="aluno">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 8</span>
+        <h2>Portal do Aluno</h2>
+        <p class="cap-lead">O aluno resolve sozinho o que antes dependia da recepção: confirmar presença, pedir reposição, entrar em turmas e pagar mensalidades.</p>
+      </div>
+      <div class="faixa aluno"><span class="tag">Aluno</span><span>Menu em três grupos: <b>Eu</b>, <b>Aulas</b> e <b>Estúdio</b>.</span></div>
+
+      <div class="tela" id="al-passaporte">
+        <div class="tela-topo"><h3>Meu passaporte</h3><span class="caminho">Eu › <b>Meu passaporte</b></span></div>
+        <p>A página de abertura do aluno: a próxima aula, as turmas ativas, a frequência e atalhos para a agenda e a evolução. Se a frequência de uma turma cair abaixo de 75%, aparece um alerta sugerindo reposição.</p>
+      </div>
+
+      <div class="tela" id="al-matricula">
+        <div class="tela-topo"><h3>Minha matrícula</h3><span class="caminho">Eu › <b>Minha matrícula</b></span></div>
+        <p>As turmas ativas, a situação financeira e os pedidos de cancelamento.</p>
+        <h4>Pedir o cancelamento</h4>
+        <ol class="passos">
+          <li><div>Clique em <strong>Solicitar cancelamento</strong>.</div></li>
+          <li><div>Escolha as turmas a cancelar.</div></li>
+          <li><div>Escolha o motivo: motivos financeiros, incompatibilidade de horário, insatisfação com as aulas, mudança de cidade, saúde ou lesão, ou outro.</div></li>
+          <li><div>Revise e envie. A administração responde pelo portal.</div></li>
+        </ol>
+        <p>Só existe um pedido em análise por vez, e ele pode ser desfeito enquanto não for respondido. O histórico mostra os pedidos anteriores e as respostas.</p>
+      </div>
+
+      <div class="tela" id="al-agenda">
+        <div class="tela-topo"><h3>Agenda</h3><span class="caminho">Aulas › <b>Agenda</b></span></div>
+        <p>As aulas dos próximos 14 dias.</p>
+        <ul>
+          <li><strong>Confirmar presença:</strong> um toque avisa o professor que você vai. A confirmação abre até 7 dias antes da aula e pode ser desfeita.</li>
+          <li><strong>Solicitar reposição:</strong> em três etapas. Escolha a turma em que faltou (e, se quiser, a data da falta); depois um horário entre as turmas com vaga, com as da mesma modalidade primeiro; por fim, confirme e deixe uma mensagem ao professor.</li>
+          <li><strong>Agendar aula experimental:</strong> experimente uma turma em que você ainda não está matriculado.</li>
+        </ul>
+      </div>
+
+      <div class="tela" id="al-frequencia">
+        <div class="tela-topo"><h3>Frequência</h3><span class="caminho">Aulas › <b>Frequência</b></span></div>
+        <p>Todas as suas aulas, mês a mês. Use as setas para navegar entre os meses e alterne entre o resumo do mês e o resumo desde a matrícula.</p>
+        <p>No calendário, cada dia mostra a situação da aula:</p>
+        <div class="chips"><span class="chip ok"><i></i>Presente</span><span class="chip falta"><i></i>Falta</span><span class="chip just"><i></i>Justificada</span><span class="chip agenda"><i></i>Agendada</span><span class="chip sem"><i></i>Sem registro</span></div>
+        <p>Clique num dia para ver o detalhe. Abaixo ficam a frequência de cada turma e a lista de faltas e justificativas. O mínimo exigido é <strong>75%</strong>, e as faltas justificadas não entram na conta.</p>
+      </div>
+
+      <div class="tela" id="al-explorar">
+        <div class="tela-topo"><h3>Explorar turmas</h3><span class="caminho">Aulas › <b>Explorar turmas</b></span></div>
+        <p>As turmas abertas, com as vagas atualizadas em tempo real. <strong>Matricular-me</strong> faz a matrícula na hora; a mensalidade da nova turma é lançada pela administração no próximo ciclo.</p>
+      </div>
+
+      <div class="tela" id="al-evolucao">
+        <div class="tela-topo"><h3>Evolução</h3><span class="caminho">Aulas › <b>Evolução</b></span></div>
+        <p>O seu progresso na dança: o gráfico da média técnica ao longo do tempo, os feedbacks dos professores com as notas de ritmo, técnica, expressão e coreografia, o repertório estudado (do diário de classe) e o histórico de presença.</p>
+      </div>
+
+      <div class="tela" id="al-avisos">
+        <div class="tela-topo"><h3>Avisos</h3><span class="caminho">Estúdio › <b>Avisos</b></span></div>
+        <p>Os avisos do estúdio e das suas turmas. O mais importante fica em destaque no topo (os urgentes primeiro), e os demais são agrupados em hoje, esta semana, este mês e anteriores. O que chegou desde a sua última visita aparece com a marca <strong>Novo</strong>.</p>
+      </div>
+
+      <div class="tela" id="al-financeiro">
+        <div class="tela-topo"><h3>Financeiro e pagamento</h3><span class="caminho">Estúdio › <b>Financeiro</b></span></div>
+        <p>No topo: em aberto, atrasadas, em análise e pago no ano. Em <strong>A pagar</strong>, cada cobrança aparece como um cartão com valor e vencimento; se houver desconto, o preço cheio aparece riscado com o motivo (por exemplo, "Bolsa de estudos").</p>
+        <h4>Pagar uma mensalidade</h4>
+        <ol class="passos">
+          <li><div>Clique em <strong>Pagar agora</strong>. O valor já vem calculado, com desconto, multa e juros quando houver.</div></li>
+          <li><div>Escolha a forma de pagamento.</div></li>
+          <li><div>Conclua. A cobrança fica paga na hora, para você e para o estúdio.</div></li>
+        </ol>
+        <div class="tabela"><table>
+          <thead><tr><th>Forma</th><th>Como funciona</th></tr></thead>
+          <tbody>
+            <tr><td>PIX</td><td>QR Code ou código copia e cola.</td></tr>
+            <tr><td>Cartão de crédito</td><td>À vista ou em até 3 parcelas.</td></tr>
+            <tr><td>Boleto</td><td>Linha digitável para pagar no banco.</td></tr>
+            <tr><td>Comprovante</td><td>Pagou por fora? Envie o arquivo (até 5 MB) e a administração confere. Enquanto isso, a cobrança fica "Em análise".</td></tr>
+          </tbody>
+        </table></div>
+        <p>Depois de pago, baixe o <strong>comprovante em PDF</strong>. A <strong>planilha financeira</strong> lista todos os seus lançamentos e pode ser exportada em PDF como <strong>extrato financeiro</strong>, ou em CSV.</p>
+      </div>
+    </section>
+
+    <!-- 9 ------------------------------------------------------------ -->
+    <section class="cap" id="fluxos">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 9</span>
+        <h2>Fluxos completos</h2>
+        <p class="cap-lead">As tarefas mais comuns passam por mais de um perfil. A etiqueta mostra quem faz cada passo.</p>
+      </div>
+
+      <h3>Aluno novo, do pedido à primeira aula</h3>
+      <ol class="jornada">
+        <li><span class="quem">Interessado</span><div><b>Pede a vaga</b><span class="d">Preenche o <em>Quero dançar</em> e guarda o protocolo.</span></div></li>
+        <li><span class="quem adm">ADM</span><div><b>Conversa com a pessoa</b><span class="d">Em Pedidos de acesso, marca o contato e anota o que foi combinado.</span></div></li>
+        <li><span class="quem adm">ADM</span><div><b>Aprova o pedido</b><span class="d">O sistema cria a conta @vibedance.com e as matrículas e prepara o convite.</span></div></li>
+        <li><span class="quem">Interessado</span><div><b>Ativa o acesso</b><span class="d">Com o protocolo e o e-mail, cria a própria senha.</span></div></li>
+        <li><span class="quem adm">ADM</span><div><b>Lança a primeira mensalidade</b><span class="d">Em Nova cobrança, com o valor proporcional de recém-chegado.</span></div></li>
+        <li><span class="quem">Aluno</span><div><b>Paga e começa a dançar</b><span class="d">Pelo portal, por PIX, cartão ou boleto.</span></div></li>
+      </ol>
+
+      <h3>Mensalidades do mês</h3>
+      <ol class="jornada">
+        <li><span class="quem adm">ADM</span><div><b>Gera em lote</b><span class="d">Mês, vencimento e valor. Cada aluno ativo recebe a cobrança e uma notificação.</span></div></li>
+        <li><span class="quem">Aluno</span><div><b>Paga pelo portal</b><span class="d">A cobrança fica paga na hora. Se pagou por fora, envia o comprovante.</span></div></li>
+        <li><span class="quem adm">ADM</span><div><b>Confere o que veio por fora</b><span class="d">Aprova o comprovante ou dá a baixa manualmente.</span></div></li>
+        <li><span class="quem sis">Sistema</span><div><b>Cuida dos atrasos</b><span class="d">Na madrugada seguinte ao vencimento, marca como atrasada e avisa o aluno.</span></div></li>
+      </ol>
+
+      <h3>Reposição de aula</h3>
+      <ol class="jornada">
+        <li><span class="quem">Aluno</span><div><b>Pede a reposição</b><span class="d">Na Agenda, escolhe a turma em que faltou e uma data com vaga.</span></div></li>
+        <li><span class="quem prof">Professor</span><div><b>Decide</b><span class="d">O professor da turma de destino aprova ou recusa em Reposições.</span></div></li>
+        <li><span class="quem prof">Professor</span><div><b>Faz a chamada</b><span class="d">O aluno aparece na chamada daquela data, como os demais.</span></div></li>
+      </ol>
+
+      <h3>Cancelamento de matrícula</h3>
+      <ol class="jornada">
+        <li><span class="quem">Aluno</span><div><b>Pede o cancelamento</b><span class="d">Em Minha matrícula, escolhe as turmas e o motivo.</span></div></li>
+        <li><span class="quem adm">ADM</span><div><b>Responde</b><span class="d">Aprova (as vagas são liberadas na hora) ou recusa com um parecer.</span></div></li>
+      </ol>
+    </section>
+
+    <!-- 10 ----------------------------------------------------------- -->
+    <section class="cap" id="regras">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 10</span>
+        <h2>Regras que o sistema aplica sozinho</h2>
+        <p class="cap-lead">Estas regras são conferidas pelo servidor, não só pela tela. Valem para todos os perfis.</p>
+      </div>
+      <div class="tabela"><table>
+        <thead><tr><th>Assunto</th><th>Regra</th></tr></thead>
+        <tbody>
+          <tr><td>Atraso</td><td>Depois do vencimento: multa de 2% mais juros de 1% ao mês, proporcionais aos dias de atraso.</td></tr>
+          <tr><td>Desconto</td><td>Sempre com motivo; nunca de 100%. Multa e juros incidem sobre o valor já com desconto.</td></tr>
+          <tr><td>Ajuste</td><td>Só em cobranças em aberto. Paga, cancelada ou com comprovante em análise não pode ser alterada.</td></tr>
+          <tr><td>Cobrança repetida</td><td>Uma mensalidade por aluno, turma e mês. A segunda é bloqueada; ajuste a existente.</td></tr>
+          <tr><td>Frequência</td><td>Mínimo de 75%. Faltas justificadas não entram na conta.</td></tr>
+          <tr><td>Reposição</td><td>Em outra turma com vaga nos próximos 14 dias, primeiro as da mesma modalidade.</td></tr>
+          <tr><td>Confirmação de presença</td><td>Abre até 7 dias antes da aula.</td></tr>
+          <tr><td>Cancelamento</td><td>Um pedido em análise por aluno de cada vez.</td></tr>
+          <tr><td>Grade</td><td>Uma sala ou um professor não podem ter duas turmas no mesmo horário. As vagas não passam da capacidade da sala.</td></tr>
+          <tr><td>Pedido de acesso</td><td>CPF válido e um pedido aberto por CPF. Convite válido por 14 dias, de uso único. Senha com 8 ou mais caracteres, letras e números.</td></tr>
+          <tr><td>Avisos</td><td>ADM publica para o estúdio ou uma turma; professor, só para as próprias turmas.</td></tr>
+          <tr><td>Arquivos</td><td>Foto de perfil: JPG, PNG ou WebP até 3 MB. Comprovante de pagamento: até 5 MB.</td></tr>
+          <tr><td>Contas</td><td>Só e-mails @vibedance.com. Conta suspensa não entra.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- 11 ----------------------------------------------------------- -->
+    <section class="cap" id="problemas">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 11</span>
+        <h2>Solução de problemas</h2>
+        <p class="cap-lead">Quase todo problema ao abrir o sistema vem do banco de dados desligado ou mal configurado.</p>
+      </div>
+      <div class="tabela"><table>
+        <thead><tr><th>O que aparece</th><th>Causa provável</th><th>O que fazer</th></tr></thead>
+        <tbody>
+          <tr><td>O servidor para ao iniciar, com erro de conexão</td><td>Banco desligado, porta ou senha erradas</td><td>Ligue o PostgreSQL, confira a porta 5433 e o <code>DB_PASSWORD</code>, e inicie de novo.</td></tr>
+          <tr><td>O servidor para com erro de tabela ou coluna</td><td>Faltou rodar uma migração</td><td>Rode os scripts de <code>database/</code> em ordem (v2 a v5).</td></tr>
+          <tr><td>http://localhost:8080 não abre</td><td>O servidor ainda está subindo ou foi fechado</td><td>Espere o <code>Started VibeDanceApplication</code>; se fechou o PowerShell, inicie de novo.</td></tr>
+          <tr><td>"Acesso bloqueado: o VibeDance aceita apenas contas institucionais"</td><td>E-mail fora do domínio</td><td>Entre com uma conta @vibedance.com.</td></tr>
+          <tr><td>Login recusado com o e-mail certo</td><td>Senha errada ou conta suspensa</td><td>Confira a senha; o ADM reativa contas em Usuários e matrículas.</td></tr>
+          <tr><td>Selo vermelho "Reconectando"</td><td>A conexão em tempo real caiu</td><td>Costuma voltar sozinha; se não voltar, recarregue a página.</td></tr>
+          <tr><td>As trilhas da página inicial não tocam</td><td>O navegador só libera som após um clique</td><td>Clique uma vez no cartão ("Clique para ouvir").</td></tr>
+          <tr><td>Nenhum horário para reposição</td><td>Nenhuma turma com vaga nos próximos 14 dias</td><td>Peça ao ADM para abrir vagas ou turmas.</td></tr>
+          <tr><td>"Já tem cobrança desta turma" ao lançar</td><td>A mensalidade daquele mês já existe</td><td>Em vez de outra, ajuste a cobrança existente.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Para entender o que aconteceu com um registro, o ADM consulta a <a href="#adm-auditoria">Auditoria</a>: ela mostra quem fez o quê e quando.</p>
+    </section>
+
+    <!-- 12 ----------------------------------------------------------- -->
+    <section class="cap" id="glossario">
+      <div class="cap-head">
+        <span class="cap-num">Capítulo 12</span>
+        <h2>Glossário</h2>
+      </div>
+      <dl class="glossario">
+        <dt>Baixa</dt><dd>Registro de que uma cobrança foi paga, feito pelo ADM quando o pagamento aconteceu fora do sistema.</dd>
+        <dt>Cobrança avulsa</dt><dd>Cobrança que não é mensalidade de turma, como taxa de matrícula ou figurino.</dd>
+        <dt>Comprovante</dt><dd>Arquivo que o aluno envia para provar um pagamento feito por fora; o ADM aprova ou recusa.</dd>
+        <dt>Falta justificada</dt><dd>Falta abonada pelo professor; não conta contra a frequência.</dd>
+        <dt>Lote</dt><dd>Geração da mensalidade do mês para todas as matrículas ativas de uma vez.</dd>
+        <dt>Matrícula</dt><dd>Vínculo de um aluno com uma turma.</dd>
+        <dt>Modalidade</dt><dd>Estilo de dança, como ballet, hip hop ou forró.</dd>
+        <dt>Protocolo</dt><dd>Código <code>VD-XXXXXX</code> do pedido feito em <em>Quero dançar</em>.</dd>
+        <dt>Proporcional</dt><dd>Mensalidade cobrada só pelos dias restantes do mês, para quem entrou no meio dele.</dd>
+        <dt>Reposição</dt><dd>Aula feita em outra turma para compensar uma falta.</dd>
+        <dt>Aula experimental</dt><dd>Aula para conhecer uma turma em que o aluno ainda não está matriculado.</dd>
+        <dt>Tempo real</dt><dd>Atualização automática das telas abertas sempre que um dado muda.</dd>
+      </dl>
+    </section>
+
+    <!-- créditos ----------------------------------------------------- -->
+    <section class="creditos" id="creditos">
+      <p class="eyebrow">Criadores</p>
+      <h2>Feito por quem vive o <em>ritmo</em></h2>
+      <div class="equipe">
+        <div class="membro"><span class="av" aria-hidden="true">CF</span><b>Calebe Ferreira</b></div>
+        <div class="membro"><span class="av" aria-hidden="true">MG</span><b>Mateus Gabriel</b></div>
+        <div class="membro"><span class="av" aria-hidden="true">JP</span><b>João Paulo Sérgio</b></div>
+        <div class="membro"><span class="av" aria-hidden="true">JZ</span><b>Juan Zangerolami</b></div>
+      </div>
+      <p class="rodape">VibeDance · gestão para estúdios e companhias de dança · código em github.com/SpellmanKing/VibeDance</p>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// Copiar comandos
+document.querySelectorAll('.copiar').forEach((b) => b.addEventListener('click', async () => {
+  const pre = b.closest('.codigo').querySelector('pre');
+  try { await navigator.clipboard.writeText(pre.innerText); b.textContent = 'Copiado'; }
+  catch { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = 'Selecionado'; }
+  setTimeout(() => { b.textContent = 'Copiar'; }, 1600);
+}));
+// Índice: destaca o capítulo em leitura
+const links = [...document.querySelectorAll('.indice a')];
+const alvos = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const marcar = () => {
+  const y = window.scrollY + 120;
+  let atual = alvos[0];
+  alvos.forEach((s) => { if (s.offsetTop <= y) atual = s; });
+  links.forEach((a) => a.classList.toggle('ativo', a.getAttribute('href') === '#' + atual.id));
+};
+addEventListener('scroll', marcar, { passive: true });
+marcar();
+// No celular, o índice começa fechado e fecha ao escolher um capítulo
+const det = document.getElementById('indice-det');
+if (matchMedia('(max-width: 980px)').matches) det.open = false;
+links.forEach((a) => a.addEventListener('click', () => { if (matchMedia('(max-width: 980px)').matches) det.open = false; }));
+</script>
+
+</body>
+</html>
