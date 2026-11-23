@@ -248,8 +248,7 @@ dl.glossario dd { color: var(--ink-2); }
 }
 
 /* ------------------------------------------------ impressão / PDF (A4) */
-@page { size: A4; margin: 16mm 0 18mm; }
-@page :first { margin: 0; }
+@page { size: A4; margin: 0; }
 @media print {
   html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: var(--bg); }
   html { scroll-behavior: auto; }
@@ -262,7 +261,8 @@ dl.glossario dd { color: var(--ink-2); }
   .perfil:hover { transform: none; }
   .contagem span { animation: none; }
   .contagem span:first-child { color: var(--amber); }
-  .pagina { display: block; max-width: none; padding: 0 20mm; }
+  /* margem de página feita por dentro: o fundo escuro cobre a folha inteira e o respiro se repete em cada página */
+  .pagina { display: block; max-width: none; padding: 18mm 20mm 18mm; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .indice { position: static; max-height: none; overflow: visible; padding: 0; break-after: page; font-size: 11.5pt; }
   .indice details { border: 0; padding: 0; background: none; }
   .indice details summary::after, .indice details[open] summary::after { content: none !important; }
@@ -274,8 +274,10 @@ dl.glossario dd { color: var(--ink-2); }
   .conteudo { max-width: none; }
   .cap { break-before: page; margin-top: 0; padding-top: 0; border-top: 0; }
   .cap-head { margin-bottom: 7mm; }
-  .tela, .nota, .codigo, .jornada li, .membro, .faixa, dl.glossario dt, dl.glossario dd, tr { break-inside: avoid; }
-  .tela { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .nota, .codigo, .jornada li, .membro, .faixa, dl.glossario dt, dl.glossario dd, tr, .tela .passos li, .tela li { break-inside: avoid; }
+  /* cartões longos continuam na página seguinte em vez de deixar buracos */
+  .tela { break-inside: auto; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .tela-topo { break-inside: avoid; }
   .tela-topo, .conteudo h3, .conteudo h4 { break-after: avoid; }
   .tabela { overflow: visible; }
   .copiar { display: none; }
